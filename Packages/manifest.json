@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.styly.styly-netsync": "0.17.4",
     "com.unity.ai.assistant": "2.17.0-pre.1",
     "com.unity.ai.inference": "2.6.1",
     "com.unity.ai.navigation": "2.0.12",
@@ -13,6 +14,8 @@
     "com.unity.timeline": "1.8.12",
     "com.unity.ugui": "2.0.0",
     "com.unity.visualscripting": "1.9.11",
+    "com.unity.xr.meta-openxr": "2.3.0",
+    "com.unity.xr.openxr": "1.16.1",
     "com.unity.modules.accessibility": "1.0.0",
     "com.unity.modules.adaptiveperformance": "1.0.0",
     "com.unity.modules.ai": "1.0.0",
@@ -47,5 +50,26 @@
     "com.unity.modules.vr": "1.0.0",
     "com.unity.modules.wind": "1.0.0",
     "com.unity.modules.xr": "1.0.0"
-  }
+  },
+  "scopedRegistries": [
+    {
+      "name": "package.openupm.com",
+      "url": "https://package.openupm.com",
+      "scopes": [
+        "com.styly.device-id-provider",
+        "com.styly.shader-collection.urp",
+        "com.styly.styly-netsync",
+        "com.styly.styly-xr-rig",
+        "org.nuget.asyncio",
+        "org.nuget.nacl.net",
+        "org.nuget.netmq",
+        "org.nuget.system.buffers",
+        "org.nuget.system.memory",
+        "org.nuget.system.numerics.vectors",
+        "org.nuget.system.runtime.compilerservices.unsafe",
+        "org.nuget.system.security.principal.windows",
+        "org.nuget.system.servicemodel.primitives"
+      ]
+    }
+  ]
 }
