@@ -17,9 +17,19 @@ namespace RHCommunityHack.Interaction.DevTesting
     {
         [SerializeField] BeatTarget beatTargetPrefab;
         [SerializeField] BeatTargetConfig config;
+
+        [Header("Spawn placement")]
+        [Tooltip("Shared spawn region (normally the scene Anchor). Leave empty to fall back to a fixed distance in front of the camera.")]
+        [SerializeField] BeatSpawnArea spawnArea;
+        [Tooltip("Only used when no spawn area is assigned.")]
         [SerializeField] float spawnDistance = 1.5f;
+
+        [Header("Keys")]
         [SerializeField] Key spawnKey = Key.E;
-        [SerializeField] Key touchKey = Key.Space;
+        // Separate keys per hand so the wrong-hand rule is testable without a headset:
+        // touching a right-hand-only beat with the left key should produce Miss-Touch.
+        [SerializeField] Key leftHandKey = Key.Q;
+        [SerializeField] Key rightHandKey = Key.Space;
 
         readonly List<BeatTarget> activeTargets = new List<BeatTarget>();
 
@@ -29,7 +39,8 @@ namespace RHCommunityHack.Interaction.DevTesting
             if (keyboard == null) return;
 
             if (keyboard[spawnKey].wasPressedThisFrame) SpawnTarget();
-            if (keyboard[touchKey].wasPressedThisFrame) TouchOldest();
+            if (keyboard[leftHandKey].wasPressedThisFrame) TouchOldest(BeatHand.Left);
+            if (keyboard[rightHandKey].wasPressedThisFrame) TouchOldest(BeatHand.Right);
         }
 
         void SpawnTarget()
@@ -40,14 +51,8 @@ namespace RHCommunityHack.Interaction.DevTesting
                 return;
             }
 
-            Camera cam = Camera.main;
-            if (cam == null)
-            {
-                Debug.LogWarning("BeatTargetKeyboardTestHarness needs a Camera.main to spawn in front of.");
-                return;
-            }
+            if (!TryGetSpawnPosition(out Vector3 spawnPosition)) return;
 
-            Vector3 spawnPosition = cam.transform.position + cam.transform.forward * spawnDistance;
             BeatTarget instance = Instantiate(beatTargetPrefab, spawnPosition, Quaternion.identity);
             double perfectTime = AudioSettings.dspTime + config.ringLeadTime;
             instance.Initialize(config, perfectTime);
@@ -55,7 +60,27 @@ namespace RHCommunityHack.Interaction.DevTesting
             activeTargets.Add(instance);
         }
 
-        void TouchOldest()
+        bool TryGetSpawnPosition(out Vector3 position)
+        {
+            if (spawnArea != null)
+            {
+                position = spawnArea.GetRandomPoint();
+                return true;
+            }
+
+            Camera cam = Camera.main;
+            if (cam == null)
+            {
+                Debug.LogWarning("BeatTargetKeyboardTestHarness has no spawn area and no Camera.main to fall back to.");
+                position = default;
+                return false;
+            }
+
+            position = cam.transform.position + cam.transform.forward * spawnDistance;
+            return true;
+        }
+
+        void TouchOldest(BeatHand hand)
         {
             activeTargets.RemoveAll(t => t == null);
             if (activeTargets.Count == 0) return;
@@ -63,7 +88,7 @@ namespace RHCommunityHack.Interaction.DevTesting
             // Don't remove here: Perfect/Good resolve synchronously inside TryTouch and
             // already fire OnResolved -> HandleResolved -> activeTargets.Remove before this
             // call returns. Removing again (by index) after the fact raced with that removal.
-            activeTargets[0].TryTouch(AudioSettings.dspTime);
+            activeTargets[0].TryTouch(AudioSettings.dspTime, hand);
         }
 
         void HandleResolved(BeatTarget target, JudgmentResult result)

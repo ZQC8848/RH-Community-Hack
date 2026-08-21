@@ -78,17 +78,26 @@ namespace RHCommunityHack.Interaction
         }
 
         // Returns false if this target can no longer be resolved (already hit, or already
-        // vanishing) - the caller (keyboard harness or a future VR collider adapter) should
+        // vanishing) - the caller (keyboard harness, HandTouchSource on a controller) should
         // treat false as "this touch didn't count, try a different target."
-        public bool TryTouch(double touchTimeDsp)
+        //
+        // `hand` is which controller made contact. A beat that only accepts one hand resolves
+        // as Miss-Touch when the other hand reaches it, no matter how good the timing was -
+        // hitting the wrong-coloured beat is a mistake, not a near miss.
+        public bool TryTouch(double touchTimeDsp, BeatHand hand)
         {
             if (resolved || pendingVanishResult.HasValue) return false;
 
             double delta = touchTimeDsp - perfectTimeDsp;
             double absDelta = Math.Abs(delta);
+            bool wrongHand = (config.allowedHands & hand) == BeatHand.None;
 
             JudgmentResult result;
-            if (absDelta <= config.perfectWindow)
+            if (wrongHand)
+            {
+                result = JudgmentResult.MissTouch;
+            }
+            else if (absDelta <= config.perfectWindow)
             {
                 result = JudgmentResult.Perfect;
             }
@@ -102,8 +111,9 @@ namespace RHCommunityHack.Interaction
                 result = JudgmentResult.MissTouch;
             }
 
-            Debug.Log($"[BeatTarget] touch delta={delta * 1000:F0}ms -> {result} " +
-                      $"(perfect=±{config.perfectWindow * 1000:F0}ms, good=-{config.goodWindowEarly * 1000:F0}/+{config.goodWindowLate * 1000:F0}ms)");
+            Debug.Log($"[BeatTarget] {hand} hand, delta={delta * 1000:F0}ms -> {result}" +
+                      (wrongHand ? $" (WRONG HAND - this beat accepts {config.allowedHands})" : "") +
+                      $" (perfect=±{config.perfectWindow * 1000:F0}ms, good=-{config.goodWindowEarly * 1000:F0}/+{config.goodWindowLate * 1000:F0}ms)");
 
             Resolve(result);
             return true;

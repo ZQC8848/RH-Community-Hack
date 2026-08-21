@@ -20,6 +20,10 @@ namespace RHCommunityHack.Interaction
         public AnimationCurve missTouchVanishCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
         public float missTouchGrowScale = 1.5f;
 
+        [Header("Rules")]
+        [Tooltip("Which controller(s) may hit this beat. A touch from any other hand resolves as Miss-Touch regardless of timing.")]
+        public BeatHand allowedHands = BeatHand.Either;
+
         [Header("Geometry")]
         public float sphereRadius = 0.15f;
         public float ringStartRadius = 1f;

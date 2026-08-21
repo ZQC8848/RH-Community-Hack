@@ -124,6 +124,52 @@ Core judgment logic, neon shaders, and hit-burst VFX are all built and validated
   `Space` at different delays, confirm the four outcomes look/log right and that ring
   billboarding doesn't jitter.
 
+## Hand-specific beats (2026-08-20)
+
+- `BeatHand` is a `[Flags]` enum so one type covers both "which hand touched" and "which
+  hands this beat accepts". `BeatTargetConfig.allowedHands` carries the rule; Cyan = Right,
+  Magenta = Left. A touch from the other hand resolves as **Miss-Touch regardless of
+  timing** — deliberately, since hitting the wrong-coloured beat is a mistake rather than a
+  near miss.
+- `TryTouch(double, BeatHand)` is now the single entry point — there is no hand-less
+  overload, so every input source must state which hand it is and the judgment logic never
+  branches on input source.
+- `HandTouchSource` (in `Interaction/`, not `DevTesting/` — it is real gameplay) is the
+  physical-contact adapter: a trigger collider + kinematic Rigidbody that calls `TryTouch`
+  on contact. It references **no XR types at all**, only a `Collider` and a hand label, so
+  the module stays droppable into a project with a different rig.
+- Scene wiring: a `Beat Hit Volume` child (5cm trigger sphere) under each of
+  `Left Controller` / `Right Controller`. Deliberately a **child**, so XRI's own components
+  on the controller roots are untouched.
+- Keyboard harness now has separate `leftHandKey` (Q) and `rightHandKey` (Space) so the
+  wrong-hand rule is testable without a headset. E spawns cyan, F spawns magenta.
+- Verified in Play mode: all four hand×flavour combinations classify correctly, and the
+  physical path was confirmed end-to-end via `Physics.Simulate` — `BeatTarget`'s own log
+  shows `HandTouchSource:OnTriggerEnter` in the stack producing `Right hand, delta=0ms ->
+  Perfect` and `Left hand, delta=0ms -> MissTouch (WRONG HAND)`.
+- **Not verified: real controllers in a headset.** Without an XR device connected, XRI
+  leaves `Left Controller` / `Right Controller` **deactivated** in Play mode, so the hit
+  volumes are inactive and never fire. That is correct behaviour (no tracked hand, no hand
+  judgment), but it means the actual in-headset contact — including whether the 5cm volume
+  is the right size and sits in the right place relative to the physical controller — still
+  needs a real device.
+- The hit volumes were briefly disabled on 2026-08-20 to A/B a controller-tracking bug that
+  turned out to be an XR input profile problem (see [debug/INDEX.md](debug/INDEX.md)). They
+  are **re-enabled** — if beat hit detection ever silently stops working in VR, check these
+  two GameObjects are still active before anything else.
+- Latent: `XRInputModalityManager` on the XR Origin has `m_LeftHand` / `m_RightHand` set to
+  `NULL`. A switch to hand-tracking modality would deactivate the controllers, showing
+  nothing in their place *and* killing beat hit detection (the volumes live under the
+  controllers). Supporting hand tracking means assigning hand visuals there and putting a
+  `HandTouchSource` on each hand too.
+- Two traps when writing tests against this, both of which produced misleading results once:
+  - `Destroy()` is deferred to end of frame, so inside one synchronous `Unity_RunCommand`
+    a Perfect-resolved target is *not* yet null. Judge outcomes by the `OnResolved` callback
+    or `BeatTarget`'s own log, not by null-checking the GameObject.
+  - `AudioSettings.dspTime` advances in real time while editor-side setup runs, so calling
+    `Initialize(config, dspTime)` and *then* building test objects burns the 80ms perfect
+    window before contact. Build everything first, fix the perfect moment last.
+
 ## In flight / undecided
 
 - `Miss-Touch` judgment's exact sound cue and haptic strength/duration are unset —

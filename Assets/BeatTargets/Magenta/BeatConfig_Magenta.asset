@@ -67,6 +67,7 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   missTouchGrowScale: 1.5
+  allowedHands: 1
   sphereRadius: 0.15
   ringStartRadius: 1
   ringShrinkCurve:
