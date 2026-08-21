@@ -628,7 +628,7 @@ MonoBehaviour:
     prefab: {fileID: 1612748513799562450, guid: 6c15591f6aba468469dec10a989e5a57, type: 3}
     config: {fileID: 11400000, guid: ccab49bb5def88841920b75807c4a879, type: 2}
   spawnOnStart: 1
-  spawnInterval: 2
+  spawnInterval: 1
   startDelay: 0
 --- !u!4 &1572295097
 Transform:
@@ -812,7 +812,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1743842257}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
