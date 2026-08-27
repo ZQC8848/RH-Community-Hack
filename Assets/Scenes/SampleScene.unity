@@ -628,8 +628,8 @@ MonoBehaviour:
     prefab: {fileID: 1612748513799562450, guid: 6c15591f6aba468469dec10a989e5a57, type: 3}
     config: {fileID: 11400000, guid: ccab49bb5def88841920b75807c4a879, type: 2}
   spawnOnStart: 1
-  spawnInterval: 1
-  startDelay: 0
+  spawnInterval: 1.5
+  startDelay: 5
 --- !u!4 &1572295097
 Transform:
   m_ObjectHideFlags: 0

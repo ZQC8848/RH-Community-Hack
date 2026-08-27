@@ -1,6 +1,62 @@
 # Current state
 
-**Last updated: 2026-08-20**
+**Last updated: 2026-08-26**
+
+## Dance capture (2026-08-26) — new subsystem
+
+Records a real dancer's controller motion so takes can later be turned into beat charts.
+Spec: [../Docs/Dance Capture 录制与回放规格.md](../Docs/Dance%20Capture%20录制与回放规格.md).
+Reference-frame decision: [decisions/dance-capture-frozen-reference-frame.md](decisions/dance-capture-frozen-reference-frame.md).
+
+- Code in `Assets/Scripts/DanceCapture/`: `DanceReferenceFrame`, `DanceSample`,
+  `DanceRecording` (ScriptableObject), `DanceRecorder`, `DancePlayer`, `DanceCaptureUI`.
+  Deliberately decoupled from `BeatTarget` and free of XR types — it is the *input* to a
+  future beat extractor, not part of the gameplay loop.
+- Scene: `Assets/Scenes/DanceCaptureScene.unity`, a copy of SampleScene with all beat logic
+  **disabled rather than deleted** (BeatSpawner, both harnesses, both Beat Hit Volumes).
+- **X on the left controller** (or keyboard X) starts a **3s countdown** then records; X
+  again during the countdown cancels, X while recording stops and saves. **Hold B (right
+  controller `secondaryButton`, or keyboard B) for 3s** to re-anchor the playback origin.
+  Both bindings are code-created InputActions, not entries in the shared XRI action asset,
+  so this dev tool cannot disturb the game's input map. English world-space UI is parented
+  under the head and covers all five states (idle / countdown / recording / saved /
+  recalibrating, the last with a hold progress bar).
+- **Optional music**: assign a clip to the recorder and it is scheduled with
+  `PlayScheduled` against the exact dsp timestamp the take starts at — measured drift
+  between audio playhead and recording elapsed was **1.3e-05 s**. The clip reference is
+  saved into the `DanceRecording` and replayed (offset to `inPoint`) during playback. Leave
+  it empty for a silent take. Recording and playback use **separate AudioSources** so a
+  looping preview can't fight the take being recorded for one source's playhead.
+- **Playback origin is calibrated once and kept across loops** — it deliberately does NOT
+  re-anchor each loop, so successive passes land in exactly the same place and are
+  comparable. Verified: moving the head 5m left the proxies where they were; calling
+  `RecalibrateOrigin()` then re-anchored them to the new head pose.
+- **Mode is decided by one rule**: a recording assigned to `DancePlayer` = PLAY MODE (the
+  recorder component is **disabled outright**); an empty slot = RECORD MODE. Owned by
+  `DanceCaptureModeController`, deliberately *not* by the recorder — a component that
+  disables itself stops running `Update` and could never re-enable itself. Assigning or
+  clearing the slot mid-play works without leaving play mode. Verified both directions.
+  - `DanceRecorder.StartCountdown()` also refuses when the component is disabled. Without
+    that guard, an external `Toggle()` call stranded it in `CountingDown` with no `Update`
+    to advance it, and it would fire a stale take the moment the mode flipped back. Found
+    by testing, not by reading.
+- Saved takes are **timestamped** (`Dance_2026-08-26_16-20-40.asset`) so repeated recordings
+  never collide and the filename says when it was captured.
+- Trim is `inPoint`/`outPoint` only — **non-destructive, never delete samples**. No
+  time-scaling, by decision.
+- **`maxSampleRate` (default 90 Hz) is load-bearing, not a nicety.** Sampling every frame
+  in an uncapped Editor hit 847 Hz: a 15s take was a 2.9 MB asset. With the cap a 14s take
+  is 155 KB. Effective rate is `min(frameRate, maxSampleRate)`.
+- **Saving is Editor-only** (`AssetDatabase`). On-device recording would need a JSON or
+  binary writer into `persistentDataPath`. Expected workflow is Link / Air Link.
+- Verified in Play mode with synthetic data (no headset needed): capture→save→asset works;
+  `TrySample` interpolation is exact against an analytic path (error 0); trim arithmetic
+  correct; playback drives the proxies to positions that match hand-computed expectations
+  (left proxy at y=1.958 vs expected 1.956); path preview builds 200 points.
+- **Not verified: an actual headset take.** Frame capture from a real head pose, whether
+  the X button binding fires on real Touch hardware, and whether the frozen frame holds up
+  when a dancer turns mid-take all need a real device.
+
 
 > This file **expires** — that is its job. Update it at the end of a working session.
 > Anything meant to stay true belongs elsewhere; see the routing table in [README](README.md).
