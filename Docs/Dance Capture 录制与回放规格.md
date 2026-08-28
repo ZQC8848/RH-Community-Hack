@@ -57,14 +57,15 @@ DanceRecording (ScriptableObject)
 | 停止并保存 | 录制中按 **X** |
 | 重新校准回放原点 | **长按 B 键 3 秒**（右手柄 `secondaryButton` / 键盘 B） |
 
-**状态机**：`Idle → CountingDown（3s）→ Recording → Idle`。倒计时期间**不采样**，时间轴从倒计时结束那一刻算起（实测首帧 t≈0.008s）。
+**状态机**：`Idle →（挂了视频时）PreparingVideo → CountingDown（3s）→ Recording → Idle`。倒计时期间**不采样**，时间轴从倒计时结束那一刻算起（实测首帧 t≈0.008s）。
 
 - 按键绑定是**代码里创建的独立 InputAction**，不写进共享的 XRI action 资产——这个开发工具不应该有能力干扰游戏本体依赖的输入映射。
 - ⚠️ **键盘 X 是桌面调试用的便利绑定，在编辑器里容易误触**：只要 Game 视图有焦点，敲到的任意一个 `x` 都会开始录制。开发期间曾因此产生过一份 7 秒的意外录制。头显上不存在这个问题（那边是手柄 X 键）。如果觉得烦，去掉 `<Keyboard>/x` 绑定或改成组合键即可。
 - 停止时自动保存为资产到 `Assets/DanceRecordings/`，**文件名带时间戳**：`Dance_2026-08-26_16-20-40.asset`。这样多次录制不会互相覆盖，文件名本身也说明了录制时间。`GenerateUniqueAssetPath` 作为兜底，处理同一秒内完成两次录制的极端情况。
 - 开始录制时会自动 `Stop()` 回放器（`playerToStop` 引用），避免循环预览的音乐盖在正在录制的音乐上。
 - UI 全英文，世界空间画布挂在头部下方，始终在视野内：
-  - 录制待机：`● RECORD MODE` + `Press X to start recording` +（有音乐时）`(music will play)`
+  - 录制待机：`● RECORD MODE` + `Press X to start recording` +（挂了音乐/视频时）`(video + music will play)` 等提示
+  - 缓冲视频：`BUFFERING VIDEO...` + `The countdown starts once the video is ready`（黄色）
   - 回放模式：`▶ PLAY MODE` + 当前播放的名字与进度 + `Clear the Recording field on Dance Player to record again`，**面板底部以分隔线隔开一行页脚**：`Hold B for 3s to recalibrate origin`（蓝色）
   - 长按 B 的提示**只出现在回放模式**：重新校准锚定的是**回放原点**，录制时录制器会在开录那一刻自己快照参考系，这行提示在录制模式下指向的是不存在的东西
   - 倒计时：`GET READY` + 大号秒数 + `Press X to cancel`（黄色）
@@ -96,6 +97,25 @@ DanceRecording (ScriptableObject)
 4. 不挂音频就留空，录制和回放都静音，不影响任何其他功能。
 
 录制和回放各自使用**独立的 AudioSource**（场景里的 `Recording Music` / `Playback Music`），避免两者争抢同一个 clip 和播放头。
+
+## 4c. 视频（可选）
+
+场景里有一块 `Video Screen`（世界空间的 16:9 quad，位于 `(0, 1.6, 2.5)`，面朝 rig），挂着 `VideoPlayer`，渲染到 `Assets/DanceCapture/VideoRenderTexture.renderTexture`，quad 用一个 Unlit 材质采样这张 RT。它**不是**挂在头部下面的——是房间里的一块屏幕，不会跟着视线转。
+
+用法和音乐对称：把 `VideoClip` 拖到 `DanceRecorder` 的 `Video (Optional) → Video Clip`，录制时播放，视频引用写进录制资产，回放时自动重播。
+
+- **音画同步**由 `VideoPlayer` 自己保证：`audioOutputMode = Direct`，不走额外的 AudioSource，省掉"让 AudioSource 跟上解码器"这类同步问题。
+- ⚠️ **同时挂了音乐和带声音的视频会同时出声**，两条音轨叠在一起。要么只用其中一个，要么用没有声音的视频。
+
+### 视频的启动时机：为什么多了一个 PreparingVideo 状态
+
+`VideoPlayer` **没有 `PlayScheduled`**，无法像 `AudioSource` 那样对着 dsp 时钟精确调度；而且未缓冲时 `Play()` 会静默等待解码器。
+
+最初的实现只是"在倒计时期间调用 `Prepare()`"，但**没有真正等它就绪**——实测出现过视频比动作晚约 13 秒才开始的情况，这会让录下来的动作和视频完全对不上，后续没法据此提取节拍。
+
+现在改成：按下 X 后**先进入 `PreparingVideo` 状态等 `isPrepared`，就绪后才开始倒计时**。这样倒计时和视频从同一个时刻起算。UI 会显示 `BUFFERING VIDEO...`。
+
+> **⚠️ 视频与动作的同步精度尚未在真机上验证。** 音乐那条链路实测漂移只有 13 微秒（因为 `PlayScheduled` 走 dsp 时钟），但 `VideoPlayer` 的时钟跟随**渲染循环**，与 dsp 时钟不是一回事。开发时通过 MCP 驱动、Game 视图不持续重绘，视频会时停时冲，**测不出有意义的漂移数字**。请戴上头显实际录一段带视频的，确认动作和画面对得上；如果发现有稳定偏移，可以在录制资产里额外记录视频起始偏移量来补偿。
 
 **已知限制**：保存用的是 `AssetDatabase`，**仅在 Unity 编辑器内可用**。需要在一体机上独立录制的话，得另外写 JSON/二进制的读写路径（代码里已标注）。目前的预期用法是 Link / Air Link 连编辑器录制。
 

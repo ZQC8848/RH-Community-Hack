@@ -92,6 +92,13 @@ namespace RHCommunityHack.DanceCapture
                 return;
             }
 
+            if (recorder != null && recorder.IsPreparingVideo)
+            {
+                statusText.color = CountdownColour;
+                statusText.text = "BUFFERING VIDEO...\n\nThe countdown starts once the video is ready\n\nPress X to cancel";
+                return;
+            }
+
             if (recorder != null && recorder.IsCountingDown)
             {
                 statusText.color = CountdownColour;
@@ -117,8 +124,15 @@ namespace RHCommunityHack.DanceCapture
                 return;
             }
 
-            statusText.text = "● RECORD MODE\n\nPress X to start recording"
-                            + (recorder != null && recorder.HasMusic ? "  (music will play)" : "");
+            string accompaniment = "";
+            if (recorder != null)
+            {
+                if (recorder.HasVideo && recorder.HasMusic) accompaniment = "  (video + music will play)";
+                else if (recorder.HasVideo) accompaniment = "  (video will play)";
+                else if (recorder.HasMusic) accompaniment = "  (music will play)";
+            }
+
+            statusText.text = "● RECORD MODE\n\nPress X to start recording" + accompaniment;
         }
 
         // Sits at the bottom of the PLAY MODE panel only. Recalibrating re-anchors the playback

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Video;
 
 namespace RHCommunityHack.DanceCapture
 {
@@ -24,6 +25,10 @@ namespace RHCommunityHack.DanceCapture
         [Tooltip("Track the dancer performed to, carried through from the recorder. Null if the " +
                  "take was captured in silence - playback simply stays silent in that case.")]
         public AudioClip music;
+
+        [Tooltip("Video the dancer followed, carried through from the recorder. Null if the take " +
+                 "was captured without one. The video's own audio track plays with it.")]
+        public VideoClip video;
 
         [Header("Trim (non-destructive)")]
         [Min(0f)] public float inPoint;

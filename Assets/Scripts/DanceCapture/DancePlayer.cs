@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Video;
 
 namespace RHCommunityHack.DanceCapture
 {
@@ -26,6 +27,8 @@ namespace RHCommunityHack.DanceCapture
         [Tooltip("Seconds to wait between loops, so the restart is readable.")]
         [SerializeField] float loopPause = 0.5f;
         [SerializeField] AudioSource musicSource;
+        [Tooltip("Shows the video the take was recorded against, if it had one.")]
+        [SerializeField] VideoPlayer videoPlayer;
 
         [Header("Origin calibration")]
         [Tooltip("Seconds B must be held to re-anchor the playback origin to the current head pose.")]
@@ -57,6 +60,7 @@ namespace RHCommunityHack.DanceCapture
         double startDsp;
         double resumeAtDsp;
         float holdSeconds;
+        bool videoStartPending;
         InputAction recalibrateAction;
 
         void Awake()
@@ -103,7 +107,9 @@ namespace RHCommunityHack.DanceCapture
         {
             IsPlaying = false;
             PlayheadSeconds = 0f;
+            videoStartPending = false;
             if (musicSource != null) musicSource.Stop();
+            if (videoPlayer != null) videoPlayer.Stop();
             ClearPathPreview();
         }
 
@@ -155,6 +161,35 @@ namespace RHCommunityHack.DanceCapture
                 }
             }
 
+            // VideoPlayer cannot be scheduled the way an AudioSource can, so buffer it now and
+            // start it from Update once the playhead actually reaches startAt - a loop pause
+            // means "now" and "when the pass begins" are not the same moment.
+            videoStartPending = false;
+            if (videoPlayer != null)
+            {
+                if (recording.video == null)
+                {
+                    videoPlayer.Stop();
+                }
+                else if (videoPlayer.clip == recording.video && videoPlayer.isPrepared)
+                {
+                    // Already buffered on this clip - just rewind. Tearing it down and calling
+                    // Prepare() again every loop is what made the picture appear frozen on frame
+                    // one: a take shorter than the video reset the decoder before it had got
+                    // going, over and over.
+                    videoPlayer.time = recording.inPoint;
+                    videoStartPending = true;
+                }
+                else
+                {
+                    videoPlayer.Stop();
+                    videoPlayer.clip = recording.video;
+                    videoPlayer.time = recording.inPoint;
+                    videoPlayer.Prepare();
+                    videoStartPending = true;
+                }
+            }
+
             RebuildPathPreview();
         }
 
@@ -167,6 +202,15 @@ namespace RHCommunityHack.DanceCapture
             double now = AudioSettings.dspTime;
             if (now < resumeAtDsp) return;
 
+            // Wait for isPrepared before starting, exactly as DanceRecorder does. Calling Play()
+            // while Prepare() is still in flight leaves the player wedged: it reports isPlaying
+            // but never decodes past frame 0, which looked like a frozen first frame.
+            if (videoStartPending && videoPlayer != null && videoPlayer.isPrepared)
+            {
+                videoStartPending = false;
+                videoPlayer.Play();
+            }
+
             float elapsed = (float)(now - startDsp);
             float duration = recording.TrimmedDuration;
 
@@ -176,6 +220,7 @@ namespace RHCommunityHack.DanceCapture
                 {
                     IsPlaying = false;
                     if (musicSource != null) musicSource.Stop();
+                    if (videoPlayer != null) videoPlayer.Stop();
                     OnPlaybackFinished?.Invoke();
                     return;
                 }

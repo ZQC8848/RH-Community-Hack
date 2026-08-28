@@ -21,6 +21,22 @@ Reference-frame decision: [decisions/dance-capture-frozen-reference-frame.md](de
   so this dev tool cannot disturb the game's input map. English world-space UI is parented
   under the head and covers all five states (idle / countdown / recording / saved /
   recalibrating, the last with a hold progress bar).
+- **Optional video (2026-08-28)**: a `Video Screen` quad at `(0, 1.6, 2.5)` with a
+  `VideoPlayer` rendering into `Assets/DanceCapture/VideoRenderTexture.renderTexture`.
+  Assign a clip to the recorder's `Video (Optional)`; it plays while recording, is saved
+  into the take, and replays on playback. `audioOutputMode = Direct` so the VideoPlayer
+  keeps its own A/V sync.
+  - **`VideoPlayer` has no `PlayScheduled`**, and `Play()` silently waits on an unbuffered
+    decoder. A first attempt that merely called `Prepare()` during the countdown produced a
+    **~13s** gap between motion start and video start. Fixed by adding a `PreparingVideo`
+    state that waits for `isPrepared` *before* the countdown begins.
+  - **Video-to-motion sync is NOT verified.** Music drift measures 1.3e-05 s because
+    `PlayScheduled` rides the dsp clock; `VideoPlayer` rides the *render* loop instead, and
+    driving the Editor over MCP without a continuously repainting Game view makes the video
+    stall and catch up, so no meaningful drift number can be taken here. Needs a headset
+    check. If a consistent offset shows up, record the video's start offset into the take
+    and compensate downstream.
+  - Assigning both a music clip and a video with audio plays both at once.
 - **Optional music**: assign a clip to the recorder and it is scheduled with
   `PlayScheduled` against the exact dsp timestamp the take starts at — measured drift
   between audio playhead and recording elapsed was **1.3e-05 s**. The clip reference is

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Video;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -15,7 +16,7 @@ namespace RHCommunityHack.DanceCapture
     // Takes plain Transforms rather than XR types, so this works with any rig.
     public class DanceRecorder : MonoBehaviour
     {
-        public enum State { Idle, CountingDown, Recording }
+        public enum State { Idle, PreparingVideo, CountingDown, Recording }
 
         [Header("Tracked transforms")]
         [SerializeField] Transform head;
@@ -36,6 +37,13 @@ namespace RHCommunityHack.DanceCapture
         [SerializeField] AudioClip musicClip;
         [SerializeField] AudioSource musicSource;
 
+        [Header("Video (optional)")]
+        [Tooltip("Video to dance along to, shown on the screen in the scene. Its own audio track " +
+                 "plays with it - assigning both this and a Music Clip will sound like two tracks " +
+                 "at once.")]
+        [SerializeField] VideoClip videoClip;
+        [SerializeField] VideoPlayer videoPlayer;
+
         [Header("Output")]
         [SerializeField] string outputFolder = "Assets/DanceRecordings";
         [SerializeField] string fileNamePrefix = "Dance";
@@ -48,6 +56,7 @@ namespace RHCommunityHack.DanceCapture
         public State CurrentState { get; private set; } = State.Idle;
         public bool IsRecording => CurrentState == State.Recording;
         public bool IsCountingDown => CurrentState == State.CountingDown;
+        public bool IsPreparingVideo => CurrentState == State.PreparingVideo;
 
         // Counts down to zero during CountingDown, so the UI can show whole seconds.
         public float CountdownRemaining => IsCountingDown
@@ -57,6 +66,7 @@ namespace RHCommunityHack.DanceCapture
         public float ElapsedSeconds => IsRecording ? (float)(AudioSettings.dspTime - scheduledStartDsp) : 0f;
         public int SampleCount => buffer.Count;
         public bool HasMusic => musicClip != null;
+        public bool HasVideo => videoClip != null;
         public DanceRecording LastSaved { get; private set; }
 
         public event Action OnCountdownStarted;
@@ -86,7 +96,7 @@ namespace RHCommunityHack.DanceCapture
             toggleAction.Disable();
             // Never leave a half-captured take stranded in memory on a scene change.
             if (IsRecording) StopAndSave();
-            else if (IsCountingDown) CancelCountdown();
+            else if (IsCountingDown || IsPreparingVideo) CancelCountdown();
         }
 
         void OnDestroy() => toggleAction?.Dispose();
@@ -94,6 +104,10 @@ namespace RHCommunityHack.DanceCapture
         void Update()
         {
             if (toggleAction.WasPressedThisFrame()) Toggle();
+
+            // Hold at PreparingVideo until the decoder is genuinely ready, so the countdown and
+            // the video start from the same moment.
+            if (IsPreparingVideo && videoPlayer != null && videoPlayer.isPrepared) BeginCountdown();
 
             if (IsCountingDown && AudioSettings.dspTime >= scheduledStartDsp) BeginCapture();
             if (IsRecording) CaptureSample();
@@ -106,6 +120,7 @@ namespace RHCommunityHack.DanceCapture
                 case State.Idle: StartCountdown(); break;
                 // A second press during the countdown reads as "I didn't mean that" rather than
                 // as an early start.
+                case State.PreparingVideo:
                 case State.CountingDown: CancelCountdown(); break;
                 case State.Recording: StopAndSave(); break;
             }
@@ -133,6 +148,24 @@ namespace RHCommunityHack.DanceCapture
 
             if (playerToStop != null) playerToStop.Stop();
 
+            // VideoPlayer has no scheduled-start equivalent, and Play() silently waits for the
+            // decoder if the clip is not buffered yet. Waiting for isPrepared BEFORE the
+            // countdown - rather than during it - is what keeps the video from starting seconds
+            // after the motion timeline has already begun.
+            if (videoClip != null && videoPlayer != null)
+            {
+                videoPlayer.clip = videoClip;
+                videoPlayer.time = 0d;
+                videoPlayer.Prepare();
+                CurrentState = State.PreparingVideo;
+                return;
+            }
+
+            BeginCountdown();
+        }
+
+        void BeginCountdown()
+        {
             scheduledStartDsp = AudioSettings.dspTime + countdownSeconds;
 
             // Scheduling the music against the very same dsp timestamp the take starts at is
@@ -151,13 +184,16 @@ namespace RHCommunityHack.DanceCapture
 
         public void CancelCountdown()
         {
-            if (!IsCountingDown) return;
+            if (!IsCountingDown && !IsPreparingVideo) return;
             if (musicSource != null) musicSource.Stop();
+            if (videoPlayer != null) videoPlayer.Stop();
             CurrentState = State.Idle;
         }
 
         void BeginCapture()
         {
+            if (videoClip != null && videoPlayer != null) videoPlayer.Play();
+
             // The frame is snapshotted here, when the take truly starts, not when the countdown
             // was requested - by now the dancer has settled into position.
             frame = DanceReferenceFrame.Capture(head);
@@ -196,6 +232,7 @@ namespace RHCommunityHack.DanceCapture
             CurrentState = State.Idle;
 
             if (musicSource != null) musicSource.Stop();
+            if (videoPlayer != null) videoPlayer.Stop();
 
             if (buffer.Count < 2)
             {
@@ -212,6 +249,7 @@ namespace RHCommunityHack.DanceCapture
             recording.averageSampleRate = duration > 0f ? buffer.Count / duration : 0f;
             recording.label = $"{fileNamePrefix} {DateTime.Now:yyyy-MM-dd HH:mm}";
             recording.music = musicClip;
+            recording.video = videoClip;
             recording.inPoint = 0f;
             recording.outPoint = 0f;
 
@@ -233,7 +271,8 @@ namespace RHCommunityHack.DanceCapture
             OnRecordingSaved?.Invoke(recording);
             Debug.Log($"[DanceRecorder] Saved {path} - {duration:F1}s, {buffer.Count} samples " +
                       $"({recording.averageSampleRate:F0} Hz)" +
-                      (musicClip != null ? $", music '{musicClip.name}'" : ", no music"), recording);
+                      (musicClip != null ? $", music '{musicClip.name}'" : ", no music") +
+                      (videoClip != null ? $", video '{videoClip.name}'" : ", no video"), recording);
             return recording;
 #else
             // Asset creation is an editor-only API. Recording on-device would need a JSON

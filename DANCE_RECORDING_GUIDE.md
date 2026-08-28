@@ -116,20 +116,40 @@ review the take too. Leave the field empty to record in silence.
 
 > Please only use music you have the right to use. Tell us which track you used.
 
+## 7b. Record along to a video (optional)
+
+There's a screen in the scene in front of you. To dance along to a video shown on it:
+
+1. Drag your video file (`.mp4`, `.mov`, …) into **`Assets` → `Video`**.
+2. Click the **`Dance Capture`** object in the Hierarchy.
+3. In the **Inspector**, on the **`Dance Recorder`** component, drag your video into
+   **`Video (Optional)` → `Video Clip`**.
+4. Press Play and record as usual.
+
+After you press X you'll briefly see `BUFFERING VIDEO...` — the countdown only starts once
+the video is ready to play, so that the video and your movement begin together. The video
+is remembered in the take and plays again when you review it.
+
+The video's own sound plays with it. **If you assign both a music clip and a video that has
+audio, you'll hear both at once** — pick one.
+
+> Video files also go through Git LFS (see step 8).
+
 ## 8. Sending your recordings back
 
-**Only commit these two folders:**
+**Only commit these folders:**
 
 - `Assets/DanceRecordings/` — your takes
 - `Assets/Music/` — any audio you added
+- `Assets/Video/` — any video you added
 
-> **If you added audio, install [Git LFS](https://git-lfs.com) first** and run `git lfs
-> install` once. This repo stores audio through LFS, and without it your `.mp3` will be
-> committed as a broken placeholder instead of the real file. Recordings themselves are
-> plain text and need nothing special.
+> **If you added audio or video, install [Git LFS](https://git-lfs.com) first** and run
+> `git lfs install` once. This repo stores audio and video through LFS, and without it your
+> `.mp3`/`.mp4` will be committed as a broken placeholder instead of the real file.
+> Recordings themselves are plain text and need nothing special.
 
 ```bash
-git add Assets/DanceRecordings Assets/Music
+git add Assets/DanceRecordings Assets/Music Assets/Video
 git commit -m "Add dance recordings"
 git push
 ```
@@ -166,6 +186,7 @@ you added audio) and send it over.
 | Panel shows | Meaning |
 |---|---|
 | `● RECORD MODE` | Ready — press X to record |
+| `BUFFERING VIDEO...` | Waiting for the video to be ready; the countdown starts after |
 | `GET READY` + number | Countdown running; X cancels |
 | `● RECORDING` (red) | Capturing; X stops and saves |
 | `SAVED …` | Take written to `Assets/DanceRecordings` |
@@ -182,3 +203,6 @@ you added audio) and send it over.
 | No headset view at all | Quest Link isn't running, or OpenXR isn't enabled (step 3) |
 | A recording appeared that you didn't make | The keyboard `X` key also triggers recording while the Game view has focus. Harmless — just delete the file |
 | Music doesn't play | Check the clip is in `Music (Optional)` → `Music Clip` on **Dance Recorder** (step 7) |
+| Video screen stays black | Check the clip is in `Video (Optional)` → `Video Clip` on **Dance Recorder** (step 7b) |
+| Stuck on `BUFFERING VIDEO...` | The video file may be a format Unity can't decode. Try re-encoding it as H.264 `.mp4` |
+| Two songs playing at once | You have both a Music Clip and a video with audio assigned — clear one |
