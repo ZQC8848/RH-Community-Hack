@@ -258,6 +258,51 @@ Core judgment logic, neon shaders, and hit-burst VFX are all built and validated
     `Initialize(config, dspTime)` and *then* building test objects burns the 80ms perfect
     window before contact. Build everything first, fix the perfect moment last.
 
+## PlayScene (2026-08-29) - the two interactions in one scene
+
+`Assets/Scenes/PlayScene.unity`, copied from DanceCaptureScene. The player picks between
+**Beat mode** (hit spheres charted from a take) and **Guide mode** (keep hands inside orbs that
+travel the take). **X** switches; both modes read the same take.
+
+- **`DanceCaptureScene` is untouched and still the recording scene.** The whole take pipeline and
+  the collaborator workflow in `DANCE_RECORDING_GUIDE.md` depend on it - PlayScene is a copy, not
+  a replacement. PlayScene has no recorder, no `DanceCaptureModeController`, no `DanceCaptureUI`.
+- New integration layer in `Assets/Scripts/Play/` (`RHCommunityHack.Play`), the only code that
+  knows about both modules - `Interaction/` and `DanceCapture/` still know nothing of each other.
+  - `PlayModeController` - owns the take and the switch. **Must stay on an object the switch
+    never deactivates**; a component that switches off its own object can never switch back on.
+  - `PlayModeUI` - mode readout, and finally a reader for `DanceFollowScore`'s follow rate.
+- **Switching tears down four things**, and each was a real leak: live `BeatTarget`s (they keep
+  running their state machine and resolve as Miss-Timeout after the mode has changed), the
+  spawner timer, world-space particles (they outlive their emitter being hidden), and the
+  `DancePlayer` *component* - left enabled, its own hold-B action would re-anchor and restart
+  playback in the middle of beat mode.
+- Scene layout: `Beat Mode` and `Guide Mode` groups (both at identity - `GuideOrb` treats
+  `orbRadius` as a world radius and warns if lossyScale leaves 1). Hit volumes are children of
+  the controllers so they are toggled separately. `Play Controller` holds `DancePlayer`,
+  `DanceFollowScore`, `PlayModeController`, `PlayModeUI`.
+- `BeatSpawner.startDelay` dropped 5s -> 1.5s: `StartSpawning()` re-applies it on **every**
+  switch, so the old value meant five silent seconds each time beat mode was entered.
+- **Beat mode has an earned hand trail** (`BeatComboTrail`, `Interaction/`): same `HandTrail`
+  component guide mode uses, coloured to match the beat flavours (magenta left, cyan right).
+  A 0-5 level drives both length and colour vividness - **Perfect +2, Good +1, Miss-Touch /
+  Miss-Timeout -1**; level 0 clears the trail outright rather than just shortening it, because
+  HandTrail's grace period would otherwise keep drawing for another second.
+  `BeatSpawner.OnBeatSpawned` was added so a scorer can hook each beat's `OnResolved` without the
+  spawner knowing who listens. Level resets on entering beat mode - a trail carried across a
+  mode switch would not have been earned in that run.
+- **Gains apply instantly, penalties do not.** `BeatTarget` resolves Perfect/Good synchronously
+  inside `TryTouch`, but Miss-Touch and Miss-Timeout fire `OnResolved` only *after* their vanish
+  animation (~0.25-0.3s). So the trail grows the moment you hit and shrinks a beat later. Not a
+  bug - it follows the existing beat design - but it is a real feel difference, and it made a
+  first test look like the penalty was broken until the timing was accounted for.
+- Verified in play mode by driving real judgments: 0 -> 4 on two Perfects, clamped at 5, then
+  4 -> 2 on two wrong-hand touches, and cleared to 0 points at level 0. **Untouched beats time
+  out at -1 each**, so at 2 beats per 1.5s tick the trail drains quickly if beats are ignored -
+  worth balancing once it has been felt in a headset.
+- Verified by switching four times in play mode: no leftover beats, particles or line points at
+  any transition. **Not tried in a headset.**
+
 ## Guide orbs (2026-08-29) - built, NOT yet tried in a headset
 
 Two orbs travel a recorded take, trailing particles; reaching a controller into one makes

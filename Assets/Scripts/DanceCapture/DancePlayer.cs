@@ -9,7 +9,9 @@ namespace RHCommunityHack.DanceCapture
     //
     // The playback origin is calibrated ONCE - on the first Play - and then kept. Loops do NOT
     // re-sample it, so a take stays pinned exactly where it was first anchored and successive
-    // passes are directly comparable. Hold B for 3s to re-anchor to where you are standing now.
+    // passes are directly comparable. Holding B re-anchors to where you are standing now - handled
+    // here in the capture scene, but handed to PlayModeController in PlayScene, where the same
+    // gesture must also re-anchor beat mode (see handleRecalibrateInput).
     public class DancePlayer : MonoBehaviour
     {
         [Header("Source")]
@@ -40,6 +42,10 @@ namespace RHCommunityHack.DanceCapture
         [Header("Origin calibration")]
         [Tooltip("Seconds B must be held to re-anchor the playback origin to the current head pose.")]
         [SerializeField, Range(0.5f, 10f)] float recalibrateHoldSeconds = 3f;
+        [Tooltip("Handle the hold-B gesture here. Turn OFF when something above this owns the " +
+                 "gesture - in PlayScene the mode controller does, because the same hold has to " +
+                 "re-anchor beat mode too, which this component knows nothing about.")]
+        [SerializeField] bool handleRecalibrateInput = true;
 
 
         public bool IsPlaying { get; private set; }
@@ -266,6 +272,12 @@ namespace RHCommunityHack.DanceCapture
 
         void TickRecalibrateHold()
         {
+            if (!handleRecalibrateInput)
+            {
+                holdSeconds = 0f;
+                return;
+            }
+
             if (recalibrateAction.IsPressed())
             {
                 holdSeconds += Time.unscaledDeltaTime;

@@ -68,7 +68,7 @@ MonoBehaviour:
     m_RotationOrder: 4
   missTouchGrowScale: 1.5
   allowedHands: 1
-  sphereRadius: 0.07
+  sphereRadius: 0.12
   ringStartRadius: 1
   ringShrinkCurve:
     serializedVersion: 2

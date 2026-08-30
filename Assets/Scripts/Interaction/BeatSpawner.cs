@@ -4,12 +4,12 @@ using UnityEngine;
 
 namespace RHCommunityHack.Interaction
 {
-    // Spawns a beat at a fixed interval, picking a flavour at random.
+    // Spawns beats at a fixed interval, asking a BeatPlacementSource where to put them.
     //
-    // This is scaffolding, not the real level system: the design calls for beats to come from
-    // a recorded performance (see Docs/), where both the timing and the position come from the
-    // recording rather than from a timer and a random point. Keep that replacement in mind
-    // before building anything substantial on top of this.
+    // Half of the design's end state: positions can now come from a recorded performance
+    // (DanceRecordingBeatSource), while the CADENCE is still this timer rather than the
+    // recording's own rhythm. Beat detection from the take - which would replace the timer too -
+    // is still unbuilt.
     public class BeatSpawner : MonoBehaviour
     {
         // Prefab and config are two separate assets per flavour, so pair them explicitly here
@@ -24,7 +24,13 @@ namespace RHCommunityHack.Interaction
             public bool IsValid => prefab != null && config != null;
         }
 
-        [SerializeField] BeatSpawnArea spawnArea;
+        [Tooltip("Where beats go. BeatSpawnArea scatters them; DanceRecordingBeatSource " +
+                 "puts them where a recorded dancer's hands were.")]
+        [SerializeField] BeatPlacementSource placementSource;
+
+        // Raised for every beat as it is created, so anything that scores or reacts to judgments
+        // can subscribe to that beat's OnResolved without the spawner knowing who is listening.
+        public event Action<BeatTarget> OnBeatSpawned;
         [SerializeField] List<BeatFlavour> flavours = new List<BeatFlavour>();
 
         [Header("Timing")]
@@ -34,8 +40,10 @@ namespace RHCommunityHack.Interaction
         [Tooltip("Seconds to wait before the first spawn.")]
         [SerializeField] float startDelay = 0f;
 
+        readonly List<BeatPlacement> placements = new List<BeatPlacement>(4);
         double nextSpawnDsp;
         bool running;
+        bool warnedAboutLeadTimes;
 
         void Start()
         {
@@ -59,7 +67,7 @@ namespace RHCommunityHack.Interaction
             double now = AudioSettings.dspTime;
             if (now < nextSpawnDsp) return;
 
-            SpawnRandomBeat();
+            SpawnTick();
 
             // Advance by the interval rather than from "now", so small per-frame overshoot
             // doesn't accumulate into audible drift.
@@ -70,24 +78,83 @@ namespace RHCommunityHack.Interaction
             if (nextSpawnDsp < now) nextSpawnDsp = now + spawnInterval;
         }
 
-        public BeatTarget SpawnRandomBeat()
+        // One tick may produce several beats - a recording-driven source hands back one per
+        // hand, so both of a dancer's hands get a target at the same moment.
+        public void SpawnTick()
         {
-            if (spawnArea == null)
+            if (placementSource == null)
             {
-                Debug.LogWarning("BeatSpawner has no spawn area assigned.", this);
-                return null;
+                Debug.LogWarning("BeatSpawner has no placement source assigned.", this);
+                return;
             }
 
-            BeatFlavour flavour = PickFlavour();
-            if (flavour == null)
+            if (!TryGetLeadTime(out float leadTime))
             {
                 Debug.LogWarning("BeatSpawner has no usable flavours (each needs both a prefab and a config).", this);
-                return null;
+                return;
             }
 
-            BeatTarget instance = Instantiate(flavour.prefab, spawnArea.GetRandomPoint(), Quaternion.identity);
-            instance.Initialize(flavour.config, AudioSettings.dspTime + flavour.config.ringLeadTime);
-            return instance;
+            // The source is asked where the hand should be at the moment the beat is HIT, not
+            // when it appears. Sampling a performance at spawn time instead would place every
+            // beat a lead-time behind the dance it came from.
+            double perfectTimeDsp = AudioSettings.dspTime + leadTime;
+
+            placements.Clear();
+            placementSource.GetPlacements(perfectTimeDsp, placements);
+
+            foreach (BeatPlacement placement in placements)
+            {
+                BeatFlavour flavour = PickFlavourFor(placement.hand);
+                if (flavour == null) continue;
+
+                BeatTarget instance = Instantiate(flavour.prefab, placement.position, Quaternion.identity);
+                instance.Initialize(flavour.config, perfectTimeDsp);
+                OnBeatSpawned?.Invoke(instance);
+            }
+        }
+
+        // A source is asked about a single moment, so the whole tick shares one lead time.
+        // Flavours that disagree would each want a different moment - warn rather than silently
+        // telegraphing one of them wrongly.
+        bool TryGetLeadTime(out float leadTime)
+        {
+            leadTime = 0f;
+            bool found = false;
+
+            foreach (var flavour in flavours)
+            {
+                if (flavour == null || !flavour.IsValid) continue;
+
+                if (!found)
+                {
+                    leadTime = flavour.config.ringLeadTime;
+                    found = true;
+                    continue;
+                }
+
+                if (!warnedAboutLeadTimes && !Mathf.Approximately(leadTime, flavour.config.ringLeadTime))
+                {
+                    warnedAboutLeadTimes = true;
+                    Debug.LogWarning($"BeatSpawner's flavours disagree on ringLeadTime ({leadTime} vs " +
+                                     $"{flavour.config.ringLeadTime}). All beats in a tick use {leadTime}, " +
+                                     "so the others will be telegraphed for the wrong duration.", this);
+                }
+            }
+
+            return found;
+        }
+
+        // A named hand picks the flavour that accepts it; BeatHand.Either falls back to random.
+        BeatFlavour PickFlavourFor(BeatHand hand)
+        {
+            if (hand == BeatHand.Either || hand == BeatHand.None) return PickFlavour();
+
+            foreach (var flavour in flavours)
+            {
+                if (flavour == null || !flavour.IsValid) continue;
+                if ((flavour.config.allowedHands & hand) != BeatHand.None) return flavour;
+            }
+            return null;
         }
 
         BeatFlavour PickFlavour()

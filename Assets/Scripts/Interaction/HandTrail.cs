@@ -55,6 +55,15 @@ namespace RHCommunityHack.Interaction
             if (gateOpen) lastOpenTime = Time.time;
         }
 
+        // Drivers that scale the trail with some state (a combo level, say) set this every
+        // time that state changes. Clamped low rather than to zero: a zero-length trail would
+        // expire points the same frame they were added, which is the caller's job to avoid by
+        // closing the gate and calling Clear().
+        public void SetLength(float seconds)
+        {
+            pointSeconds = Mathf.Max(0.05f, seconds);
+        }
+
         public void SetColor(Color color)
         {
             if (line == null) return;

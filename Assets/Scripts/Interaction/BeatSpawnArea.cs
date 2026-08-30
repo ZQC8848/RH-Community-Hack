@@ -1,15 +1,26 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace RHCommunityHack.Interaction
 {
     // Defines the volume beats appear in. Put this on a marker object (the scene's "Anchor")
     // and point every spawner at it, so the region is described in exactly one place.
-    public class BeatSpawnArea : MonoBehaviour
+    //
+    // As a BeatPlacementSource this is the "scatter beats about" mode - kept alongside the
+    // recording-driven source so the judgment loop can still be exercised without a take loaded.
+    public class BeatSpawnArea : BeatPlacementSource
     {
         [Tooltip("Half-extent of the random offset per axis, in world metres.")]
         [SerializeField] float scatter = 0.2f;
 
         public float Scatter => scatter;
+
+        // Names no hand: a scattered beat has no business preferring one, so the spawner
+        // picks the flavour itself.
+        public override void GetPlacements(double perfectTimeDsp, List<BeatPlacement> into)
+        {
+            into.Add(new BeatPlacement { position = GetRandomPoint(), hand = BeatHand.Either });
+        }
 
         public Vector3 GetRandomPoint()
         {
