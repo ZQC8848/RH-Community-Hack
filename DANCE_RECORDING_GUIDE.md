@@ -88,8 +88,9 @@ named with the date and time, e.g. `Dance_2026-08-26_16-20-40.asset`.
 1. In the **Hierarchy** window, click the **`Dance Capture`** object.
 2. In the **Inspector**, find the **`Dance Player`** component.
 3. Drag your saved recording into **`Source` → `Recording`**.
-4. Press **Play**. Two coloured boxes replay your hand motion, with trails and a line
-   showing the full path.
+4. Press **Play**. Two glowing orbs replay your hand motion, trailing particles. Reach a
+   controller into an orb and it lights up, and a line traces where **your own hand**
+   goes for as long as you keep up with it.
 5. **Hold `B`** (right controller) for **3 seconds** to re-anchor the playback in front of
    where you're currently standing. The panel shows a progress bar while you hold it.
 
@@ -126,9 +127,16 @@ There's a screen in the scene in front of you. To dance along to a video shown o
    **`Video (Optional)` → `Video Clip`**.
 4. Press Play and record as usual.
 
-After you press X you'll briefly see `BUFFERING VIDEO...` — the countdown only starts once
-the video is ready to play, so that the video and your movement begin together. The video
-is remembered in the take and plays again when you review it.
+The video starts loading as soon as you press Play, before you've done anything — that's
+deliberate. Video can take a surprisingly long time to become ready (on the development
+machine, nearly 20 seconds), so it uses the time while you're putting the headset on.
+
+If you press X before it's ready you'll see `BUFFERING VIDEO...` with a running second
+count. The countdown only starts once the video can actually play, so that the video and
+your movement begin together. **Give it a moment after pressing Play** and there's usually
+nothing to wait for.
+
+The video is remembered in the take and plays again when you review it.
 
 The video's own sound plays with it. **If you assign both a music clip and a video that has
 audio, you'll hear both at once** — pick one.
@@ -186,7 +194,7 @@ you added audio) and send it over.
 | Panel shows | Meaning |
 |---|---|
 | `● RECORD MODE` | Ready — press X to record |
-| `BUFFERING VIDEO...` | Waiting for the video to be ready; the countdown starts after |
+| `BUFFERING VIDEO...  12s` | Waiting for the video to be ready; the countdown starts after. The number is how long it has been waiting |
 | `GET READY` + number | Countdown running; X cancels |
 | `● RECORDING` (red) | Capturing; X stops and saves |
 | `SAVED …` | Take written to `Assets/DanceRecordings` |
@@ -204,5 +212,5 @@ you added audio) and send it over.
 | A recording appeared that you didn't make | The keyboard `X` key also triggers recording while the Game view has focus. Harmless — just delete the file |
 | Music doesn't play | Check the clip is in `Music (Optional)` → `Music Clip` on **Dance Recorder** (step 7) |
 | Video screen stays black | Check the clip is in `Video (Optional)` → `Video Clip` on **Dance Recorder** (step 7b) |
-| Stuck on `BUFFERING VIDEO...` | The video file may be a format Unity can't decode. Try re-encoding it as H.264 `.mp4` |
+| `BUFFERING VIDEO...` for more than ~30s | Press X to cancel, wait a little longer, then try again — video is slow to start. If it still won't go, the file may be a format Unity can't decode: re-encode it as H.264 `.mp4` |
 | Two songs playing at once | You have both a Music Clip and a video with audio assigned — clear one |

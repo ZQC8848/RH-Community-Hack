@@ -43,6 +43,10 @@ namespace RHCommunityHack.DanceCapture
                  "at once.")]
         [SerializeField] VideoClip videoClip;
         [SerializeField] VideoPlayer videoPlayer;
+        [Tooltip("Start buffering the video the moment the scene loads. The decoder can take " +
+                 "many seconds to deliver its first picture, and this spends that wait while " +
+                 "the dancer is still putting the headset on rather than after they press X.")]
+        [SerializeField] bool warmUpVideoOnLoad = true;
 
         [Header("Output")]
         [SerializeField] string outputFolder = "Assets/DanceRecordings";
@@ -67,6 +71,9 @@ namespace RHCommunityHack.DanceCapture
         public int SampleCount => buffer.Count;
         public bool HasMusic => musicClip != null;
         public bool HasVideo => videoClip != null;
+        // Seconds spent waiting on the decoder, so the UI can show that something is happening
+        // rather than looking hung through a long buffer.
+        public float VideoBufferingSeconds => screen != null ? screen.WarmingSeconds : 0f;
         public DanceRecording LastSaved { get; private set; }
 
         public event Action OnCountdownStarted;
@@ -79,6 +86,7 @@ namespace RHCommunityHack.DanceCapture
         double scheduledStartDsp;
         double nextSampleDsp;
         InputAction toggleAction;
+        DanceVideoScreen screen;
 
         void Awake()
         {
@@ -87,6 +95,22 @@ namespace RHCommunityHack.DanceCapture
             toggleAction = new InputAction("ToggleDanceRecording", InputActionType.Button);
             toggleAction.AddBinding("<XRController>{LeftHand}/primaryButton");   // X on Meta Touch
             toggleAction.AddBinding("<Keyboard>/x");
+        }
+
+        void Start()
+        {
+            // Warming up here, not on the first X press, is the whole point: the decoder's
+            // startup cost is paid once per session, off the critical path.
+            if (!warmUpVideoOnLoad) return;
+            var videoScreen = EnsureScreen();
+            if (videoScreen != null) videoScreen.WarmUp(videoClip);
+        }
+
+        DanceVideoScreen EnsureScreen()
+        {
+            if (videoClip == null || videoPlayer == null) return null;
+            if (screen == null) screen = DanceVideoScreen.For(videoPlayer);
+            return screen;
         }
 
         void OnEnable() => toggleAction.Enable();
@@ -106,8 +130,10 @@ namespace RHCommunityHack.DanceCapture
             if (toggleAction.WasPressedThisFrame()) Toggle();
 
             // Hold at PreparingVideo until the decoder is genuinely ready, so the countdown and
-            // the video start from the same moment.
-            if (IsPreparingVideo && videoPlayer != null && videoPlayer.isPrepared) BeginCountdown();
+            // the video start from the same moment. Readiness means a picture has actually been
+            // delivered - isPrepared goes true long before that and starting on it is what left
+            // the screen showing frame one forever.
+            if (IsPreparingVideo && screen != null && screen.IsReadyFor(videoClip)) BeginCountdown();
 
             if (IsCountingDown && AudioSettings.dspTime >= scheduledStartDsp) BeginCapture();
             if (IsRecording) CaptureSample();
@@ -148,17 +174,19 @@ namespace RHCommunityHack.DanceCapture
 
             if (playerToStop != null) playerToStop.Stop();
 
-            // VideoPlayer has no scheduled-start equivalent, and Play() silently waits for the
-            // decoder if the clip is not buffered yet. Waiting for isPrepared BEFORE the
-            // countdown - rather than during it - is what keeps the video from starting seconds
-            // after the motion timeline has already begun.
-            if (videoClip != null && videoPlayer != null)
+            // VideoPlayer has no scheduled-start equivalent, so the picture has to be buffered
+            // and cued at frame zero BEFORE the countdown - waiting during it would leave the
+            // video starting seconds after the motion timeline had already begun. Normally the
+            // warm-up on load has already done this and there is nothing to wait for.
+            var videoScreen = EnsureScreen();
+            if (videoScreen != null)
             {
-                videoPlayer.clip = videoClip;
-                videoPlayer.time = 0d;
-                videoPlayer.Prepare();
-                CurrentState = State.PreparingVideo;
-                return;
+                videoScreen.WarmUp(videoClip);
+                if (!videoScreen.IsReadyFor(videoClip))
+                {
+                    CurrentState = State.PreparingVideo;
+                    return;
+                }
             }
 
             BeginCountdown();
@@ -186,13 +214,16 @@ namespace RHCommunityHack.DanceCapture
         {
             if (!IsCountingDown && !IsPreparingVideo) return;
             if (musicSource != null) musicSource.Stop();
-            if (videoPlayer != null) videoPlayer.Stop();
+            // Park, never Stop: Stop() discards the buffered decoder and the next take would
+            // have to pay the whole warm-up again.
+            if (screen != null) screen.Park();
             CurrentState = State.Idle;
         }
 
         void BeginCapture()
         {
-            if (videoClip != null && videoPlayer != null) videoPlayer.Play();
+            // Already cued at frame zero, so this is an instant resume rather than a start.
+            if (screen != null) screen.Resume();
 
             // The frame is snapshotted here, when the take truly starts, not when the countdown
             // was requested - by now the dancer has settled into position.
@@ -232,7 +263,7 @@ namespace RHCommunityHack.DanceCapture
             CurrentState = State.Idle;
 
             if (musicSource != null) musicSource.Stop();
-            if (videoPlayer != null) videoPlayer.Stop();
+            if (screen != null) screen.Park();
 
             if (buffer.Count < 2)
             {

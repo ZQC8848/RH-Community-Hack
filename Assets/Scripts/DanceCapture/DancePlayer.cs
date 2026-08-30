@@ -29,16 +29,18 @@ namespace RHCommunityHack.DanceCapture
         [SerializeField] AudioSource musicSource;
         [Tooltip("Shows the video the take was recorded against, if it had one.")]
         [SerializeField] VideoPlayer videoPlayer;
+        [Tooltip("Start buffering the take's video as soon as the scene loads, so the decoder's " +
+                 "startup cost is paid before anyone is waiting on it.")]
+        [SerializeField] bool warmUpVideoOnLoad = true;
+        [Tooltip("Rewind the video to the trim in-point at the start of every loop. Turn this " +
+                 "off for a take much shorter than its video, to let the video run on unbroken " +
+                 "instead of being seeked several times a minute.")]
+        [SerializeField] bool restartVideoEachLoop = true;
 
         [Header("Origin calibration")]
         [Tooltip("Seconds B must be held to re-anchor the playback origin to the current head pose.")]
         [SerializeField, Range(0.5f, 10f)] float recalibrateHoldSeconds = 3f;
 
-        [Header("Path preview (optional)")]
-        [Tooltip("Draws the whole trimmed path in one go when playback starts.")]
-        [SerializeField] LineRenderer leftPath;
-        [SerializeField] LineRenderer rightPath;
-        [SerializeField, Min(2)] int pathResolution = 200;
 
         public bool IsPlaying { get; private set; }
         public DanceRecording Recording => recording;
@@ -52,7 +54,10 @@ namespace RHCommunityHack.DanceCapture
             ? Mathf.Clamp01(holdSeconds / recalibrateHoldSeconds)
             : 0f;
 
-        public event Action<DanceRecording> OnPlaybackStarted;
+        // Fires at the start of EVERY pass, including each loop - Play() is not a usable signal
+        // for that, since loops go through StartPass without it. Anything that must reset per
+        // pass (a follow-rate statistic, a particle trail) hangs off this.
+        public event Action OnPassStarted;
         public event Action OnPlaybackFinished;
         public event Action OnOriginRecalibrated;
 
@@ -61,6 +66,7 @@ namespace RHCommunityHack.DanceCapture
         double resumeAtDsp;
         float holdSeconds;
         bool videoStartPending;
+        DanceVideoScreen screen;
         InputAction recalibrateAction;
 
         void Awake()
@@ -76,7 +82,22 @@ namespace RHCommunityHack.DanceCapture
 
         void Start()
         {
+            // Ahead of Play(), so a take that opens with playOnStart still gets the buffering
+            // started at the earliest possible moment rather than at its first pass.
+            if (warmUpVideoOnLoad)
+            {
+                var videoScreen = EnsureScreen();
+                if (videoScreen != null) videoScreen.WarmUp(recording.video);
+            }
+
             if (playOnStart) Play();
+        }
+
+        DanceVideoScreen EnsureScreen()
+        {
+            if (videoPlayer == null || recording == null || recording.video == null) return null;
+            if (screen == null) screen = DanceVideoScreen.For(videoPlayer);
+            return screen;
         }
 
         public void LoadRecording(DanceRecording next)
@@ -98,9 +119,8 @@ namespace RHCommunityHack.DanceCapture
             // of a stable origin; use RecalibrateOrigin() (or hold B) to move it deliberately.
             if (!HasCalibratedOrigin && !TryCalibrate()) return;
 
-            StartPass(AudioSettings.dspTime);
+            StartPass(AudioSettings.dspTime, true);
             SetProxiesVisible(true);
-            OnPlaybackStarted?.Invoke(recording);
         }
 
         public void Stop()
@@ -109,8 +129,9 @@ namespace RHCommunityHack.DanceCapture
             PlayheadSeconds = 0f;
             videoStartPending = false;
             if (musicSource != null) musicSource.Stop();
-            if (videoPlayer != null) videoPlayer.Stop();
-            ClearPathPreview();
+            // Park rather than Stop, so the buffered decoder survives. DanceRecorder calls this
+            // before every take; stopping here would make the recorder pay the warm-up again.
+            if (screen != null) screen.Park();
         }
 
         // Re-anchors the origin to the head's current pose. Playback restarts from the top so
@@ -123,7 +144,7 @@ namespace RHCommunityHack.DanceCapture
 
             if (recording != null && recording.HasSamples)
             {
-                StartPass(AudioSettings.dspTime);
+                StartPass(AudioSettings.dspTime, true);
                 SetProxiesVisible(true);
             }
         }
@@ -141,7 +162,7 @@ namespace RHCommunityHack.DanceCapture
             return true;
         }
 
-        void StartPass(double startAt)
+        void StartPass(double startAt, bool restartVideo)
         {
             startDsp = startAt;
             resumeAtDsp = startAt;
@@ -161,36 +182,27 @@ namespace RHCommunityHack.DanceCapture
                 }
             }
 
-            // VideoPlayer cannot be scheduled the way an AudioSource can, so buffer it now and
+            // VideoPlayer cannot be scheduled the way an AudioSource can, so cue it now and
             // start it from Update once the playhead actually reaches startAt - a loop pause
             // means "now" and "when the pass begins" are not the same moment.
+            //
+            // Cue, never Stop/Prepare. Tearing the decoder down and re-preparing it each pass is
+            // what made the picture appear frozen on frame one: this machine needs ~18s to
+            // deliver a first picture, and a 12s take was resetting it long before that elapsed.
             videoStartPending = false;
-            if (videoPlayer != null)
+            var videoScreen = EnsureScreen();
+            if (videoScreen != null)
             {
-                if (recording.video == null)
-                {
-                    videoPlayer.Stop();
-                }
-                else if (videoPlayer.clip == recording.video && videoPlayer.isPrepared)
-                {
-                    // Already buffered on this clip - just rewind. Tearing it down and calling
-                    // Prepare() again every loop is what made the picture appear frozen on frame
-                    // one: a take shorter than the video reset the decoder before it had got
-                    // going, over and over.
-                    videoPlayer.time = recording.inPoint;
-                    videoStartPending = true;
-                }
-                else
-                {
-                    videoPlayer.Stop();
-                    videoPlayer.clip = recording.video;
-                    videoPlayer.time = recording.inPoint;
-                    videoPlayer.Prepare();
-                    videoStartPending = true;
-                }
+                videoScreen.WarmUp(recording.video);
+                if (restartVideo) videoScreen.CueTo(recording.inPoint);
+                videoStartPending = true;
+            }
+            else if (screen != null)
+            {
+                screen.Park();
             }
 
-            RebuildPathPreview();
+            OnPassStarted?.Invoke();
         }
 
         void Update()
@@ -205,10 +217,10 @@ namespace RHCommunityHack.DanceCapture
             // Wait for isPrepared before starting, exactly as DanceRecorder does. Calling Play()
             // while Prepare() is still in flight leaves the player wedged: it reports isPlaying
             // but never decodes past frame 0, which looked like a frozen first frame.
-            if (videoStartPending && videoPlayer != null && videoPlayer.isPrepared)
+            if (videoStartPending && screen != null && screen.IsReadyFor(recording.video))
             {
                 videoStartPending = false;
-                videoPlayer.Play();
+                screen.Resume();
             }
 
             float elapsed = (float)(now - startDsp);
@@ -220,14 +232,14 @@ namespace RHCommunityHack.DanceCapture
                 {
                     IsPlaying = false;
                     if (musicSource != null) musicSource.Stop();
-                    if (videoPlayer != null) videoPlayer.Stop();
+                    if (screen != null) screen.Park();
                     OnPlaybackFinished?.Invoke();
                     return;
                 }
 
                 // Deliberately NOT re-capturing the frame here - the origin stays put across
                 // loops so every pass replays in exactly the same place.
-                StartPass(now + loopPause);
+                StartPass(now + loopPause, restartVideoEachLoop);
                 SetProxiesVisible(false);
                 return;
             }
@@ -249,6 +261,7 @@ namespace RHCommunityHack.DanceCapture
                     frame.TransformPoint(sample.rightPosition),
                     frame.TransformRotation(sample.rightRotation));
             }
+
         }
 
         void TickRecalibrateHold()
@@ -277,33 +290,6 @@ namespace RHCommunityHack.DanceCapture
                 rightProxy.gameObject.SetActive(visible);
         }
 
-        void RebuildPathPreview()
-        {
-            BuildPath(leftPath, true);
-            BuildPath(rightPath, false);
-        }
 
-        void BuildPath(LineRenderer line, bool leftHand)
-        {
-            if (line == null || recording == null || !recording.HasSamples) return;
-
-            float duration = recording.TrimmedDuration;
-            if (duration <= 0f) { line.positionCount = 0; return; }
-
-            line.positionCount = pathResolution;
-            for (int i = 0; i < pathResolution; i++)
-            {
-                float t = recording.inPoint + duration * i / (pathResolution - 1);
-                if (!recording.TrySample(t, out DanceSample sample)) continue;
-                Vector3 local = leftHand ? sample.leftPosition : sample.rightPosition;
-                line.SetPosition(i, frame.TransformPoint(local));
-            }
-        }
-
-        void ClearPathPreview()
-        {
-            if (leftPath != null) leftPath.positionCount = 0;
-            if (rightPath != null) rightPath.positionCount = 0;
-        }
     }
 }

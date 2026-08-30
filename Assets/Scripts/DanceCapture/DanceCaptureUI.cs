@@ -95,7 +95,10 @@ namespace RHCommunityHack.DanceCapture
             if (recorder != null && recorder.IsPreparingVideo)
             {
                 statusText.color = CountdownColour;
-                statusText.text = "BUFFERING VIDEO...\n\nThe countdown starts once the video is ready\n\nPress X to cancel";
+                // The elapsed count matters: the decoder can take many seconds to deliver its
+                // first picture, and a message that never changes through that looks hung.
+                statusText.text = $"BUFFERING VIDEO...  {recorder.VideoBufferingSeconds:F0}s\n\n" +
+                                  "The countdown starts once the video is ready\n\nPress X to cancel";
                 return;
             }
 
