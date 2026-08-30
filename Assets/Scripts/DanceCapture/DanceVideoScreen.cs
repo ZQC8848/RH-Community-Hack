@@ -23,10 +23,18 @@ namespace RHCommunityHack.DanceCapture
     {
         enum Phase { Empty, Warming, Seeking, Cued, Playing }
 
+        [Tooltip("Play this clip from scene load with no take driving it. Leave it empty when the " +
+                 "take supplies the video - a take always wins, this only fills an idle screen.")]
+        [SerializeField] VideoClip playOnLoad;
+        [Tooltip("Loop the play-on-load clip. Looping happens inside the decoder, so it costs no " +
+                 "second warm-up - unlike stopping and starting again.")]
+        [SerializeField] bool loopPlayOnLoad = true;
+
         VideoPlayer vp;
         Phase phase = Phase.Empty;
         VideoClip current;
         bool resumeAfterSeek;
+        bool resumeAfterWarm;
         float warmStartedAt;
         float seekStartedAt;
 
@@ -56,6 +64,17 @@ namespace RHCommunityHack.DanceCapture
             vp = GetComponent<VideoPlayer>();
             // This component decides when the clip starts; playOnAwake would race it.
             vp.playOnAwake = false;
+        }
+
+        void Start()
+        {
+            // Only claim an idle screen. A take that warmed the screen in its own Awake has
+            // already decided what belongs here, and its clip must not be swapped out from under it.
+            if (playOnLoad == null || phase != Phase.Empty) return;
+
+            vp.isLooping = loopPlayOnLoad;
+            resumeAfterWarm = true;
+            WarmUp(playOnLoad);
         }
 
         void OnDisable()
@@ -149,9 +168,19 @@ namespace RHCommunityHack.DanceCapture
             if (vp.frame < 0) return;
 
             float waited = WarmingSeconds;
+            Debug.Log($"[DanceVideoScreen] '{current.name}' ready after {waited:F1}s of buffering.", this);
+
+            if (resumeAfterWarm)
+            {
+                // Already playing from the warm-up, so just let it run. Pausing and seeking back
+                // to zero here would discard the frames those seconds just bought.
+                resumeAfterWarm = false;
+                phase = Phase.Playing;
+                return;
+            }
+
             vp.Pause();
             phase = Phase.Cued;
-            Debug.Log($"[DanceVideoScreen] '{current.name}' ready after {waited:F1}s of buffering.", this);
             CueTo(0d);
         }
 

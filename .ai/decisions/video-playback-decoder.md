@@ -1,6 +1,12 @@
 # Keep Unity's VideoPlayer; own its lifecycle instead of replacing it
 
-**2026-08-28 ・ status: DECIDED ・ scope: the video shown during recording and review, not audio and not the motion capture itself**
+**2026-08-28 ・ status: DECIDED, amended 2026-08-29 ・ scope: the video shown during recording and review, not audio and not the motion capture itself**
+
+> **2026-08-29 amendment.** The startup cost is not a fixed property of `VideoPlayer` - it is the
+> OS H.264 decode path. Setting the importer to **transcode to VP8** took the first picture from
+> 55.65s to **1.76s** on the same machine. `DanceVideoScreen` and its never-`Stop()` rule stay
+> exactly as decided below and are still what makes warm-up cheap; transcoding just makes the
+> warm-up short enough that it barely matters. **Set every new clip to transcode to VP8.**
 
 ## What forced the choice
 

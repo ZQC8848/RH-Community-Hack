@@ -574,6 +574,7 @@ GameObject:
   - component: {fileID: 387790747}
   - component: {fileID: 387790746}
   - component: {fileID: 387790745}
+  - component: {fileID: 387790750}
   m_Layer: 0
   m_Name: Video Screen
   m_TagString: Untagged
@@ -689,6 +690,20 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &387790750
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 387790744}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ff30a2c7547d0614b971e6b3eb0b426d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RHCommunityHack.DanceCapture.DanceVideoScreen
+  playOnLoad: {fileID: 32900000, guid: e2376b5de2d329341914f5d88322bbb0, type: 3}
+  loopPlayOnLoad: 1
 --- !u!1 &404831387
 GameObject:
   m_ObjectHideFlags: 0
@@ -1007,7 +1022,7 @@ MonoBehaviour:
   orbs:
   - {fileID: 1140365251}
   - {fileID: 1087047547}
-  startMode: 1
+  startMode: 0
   recalibrateHoldSeconds: 1
 --- !u!1 &510765631
 GameObject:

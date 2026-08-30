@@ -1,6 +1,6 @@
 # Video shows a single static frame and never advances, with no errors
 
-**2026-08-28 ・ cost: a long session of wrong hypotheses ・ status: root cause found - an ~18s decoder startup latency; worked around, VideoPlayer kept**
+**2026-08-28 ・ cost: a long session of wrong hypotheses ・ status: SOLVED 2026-08-29 - the latency is the OS H.264 decode path; transcoding the clip to VP8 on import removes it. See the update at the foot of this file**
 
 ## Symptom
 
@@ -99,3 +99,69 @@ path**, by a component that owns the decoder's lifecycle and never tears it down
 
 Why the decoder needs 18 seconds on this machine specifically is still unexplained. It no
 longer blocks anything, so it was not chased further.
+
+---
+
+# 2026-08-29 update - it was the H.264 decode path, and it is fixable
+
+Chasing it again for a second clip turned up both the cause and a one-setting fix.
+
+## The number was never stable, which is why it read as mysterious
+
+| Clip / setting | First picture |
+|---|---|
+| `DrumDemo.mp4`, empty scene (2026-08-28) | **~18s** |
+| `LaunchPad Compassion Dance test.mp4`, PlayScene | **55.65s** |
+| Same clip, **importer transcoding to VP8** | **1.76s** |
+
+Same machine, same day, same editor for the last two. **A "slow decoder" that varies from 18s
+to 56s is not a fixed startup cost** - and treating the 18s as a constant to be designed around
+is what stopped the search a day early.
+
+## Cause
+
+Unity's `VideoPlayer` decodes H.264 through the OS (Media Foundation on Windows). That path is
+what is slow here. Setting the importer to **transcode to VP8** makes Unity re-encode the clip
+at import time and decode it with its own built-in decoder, so the OS path is never used.
+
+`Assets/Video/LaunchPad Compassion Dance test.mp4.meta` now carries
+`enableTranscoding: 1, codec: 2` (VP8, High quality). The setting lives in the `.meta`, so it
+travels with the asset and collaborators get the same behaviour without being told.
+
+After transcoding: first picture at 1.76s, then **exactly 5.00s of video per 5s of wall clock**
+measured to t+45s, and the `AudioSampleProvider buffer overflow` warnings stop - they were the
+audio decoder running ahead of a stalled picture, exactly as the original write-up guessed.
+
+## Two claims from the original investigation, now settled
+
+**"Forcing DX11 did not help" - correct, and this time properly measured.** The original note
+flagged that claim as never tested over a long enough window. The editor was confirmed running
+`Direct3D11` (`SystemInfo.graphicsDeviceType`, logged at t+0) and the latency was still 55.65s.
+The uncommitted DX11 pin in `ProjectSettings.asset` buys nothing.
+
+**There was never a renderer fault.** Reading the `RenderTexture` back into a `Texture2D` each
+frame and averaging showed luminance moving as soon as decoding began. The picture reaches the
+RT, the material samples it, the quad draws it. Every part downstream of the decoder was always
+working.
+
+## Two traps that cost time here
+
+**A black RenderTexture is not proof of a broken render path.** The first run showed
+`frame=0` with `rtLum avg=0 min=0 max=0` and looked like "decodes but renders nothing". The
+clip simply opens on several seconds of black - luminance was still 0 at t=4.21s of *playing*
+video, and only rose once the picture brightened. Check what the clip actually starts with
+before concluding the RT is dead.
+
+**`ffmpeg -avoid_negative_ts make_zero` can make the start time non-zero.** Re-encoding to
+clean up timestamps produced `start_pts=263` (0.0214s), and Unity said so at import:
+`First video frame not zero: 1 (0.0213216s). Result may be out of sync.` Removing that one flag
+gave `start_pts=0` on both streams. Isolated by encoding 3-second samples with and without it.
+
+## Two-minute path next time
+
+| Instrument | Reading that means this |
+|---|---|
+| **Importer: transcode to VP8** | Try this *first*. It is one setting, it is stored in the `.meta`, and here it took 55.65s down to 1.76s |
+| `SystemInfo.graphicsDeviceType` logged at t+0 | Proves which API is actually live, rather than which one the project settings request |
+| `RenderTexture` → `Texture2D.ReadPixels`, log mean luminance | Separates "the decoder is stalled" from "the picture is not reaching the screen". Only this distinguishes them |
+| The clip's own opening frames | Black output can be the content, not a fault |
