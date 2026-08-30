@@ -30,7 +30,7 @@ Recording is how takes come to exist at all, and
 outside collaborators. Converting the capture scene in place would have cut off the pipeline
 that feeds both modes.
 
-### Switching tears down four things
+### Switching tears down three things
 
 Each is state that outlives its owner being hidden, and each was a real leak:
 
@@ -39,11 +39,38 @@ Each is state that outlives its owner being hidden, and each was a real leak:
 | Live `BeatTarget`s | Keep running their own state machine and resolve as Miss-Timeout after the mode has changed |
 | The spawn timer | Keeps ticking |
 | `GuideOrb.ClearTrail()` | World-space particles do not disappear when their emitter is hidden |
-| The **`DancePlayer` component** | It owns its own hold-B action; left enabled it re-anchors and restarts playback in the middle of beat mode |
 
-`PlayModeController` must live on an object the switch never deactivates. A component that
+`TearDown()` runs *before* the `SetActive(false)`, so everything it touches is still live.
+
+**There was a fourth: an explicit `player.enabled = !beat`.** `DancePlayer` owns its own hold-B
+action, and left running it re-anchors and restarts playback in the middle of beat mode. That
+line is gone, because `DancePlayer` now lives *under* the `Guide Mode` group and the grouping
+switches it off. The rule generalises:
+
+> **Anything that serves exactly one mode belongs inside that mode's group.** Grouping is not
+> cosmetic here - it is the enforcement mechanism. A line in `SetMode` is a rule somebody has to
+> remember for every component they ever add; membership of a group is a rule the scene applies
+> by itself.
+
+`DanceFollowScore` moved for the same reason: it only scores guide mode, and it had been running
+its `Update` through beat mode scoring nothing. Its `OnEnable`/`OnDisable` subscription to
+`DancePlayer` is symmetric, so deactivation is safe and its last-pass numbers stay readable.
+
+`PlayModeController` must still live on an object the switch never deactivates. A component that
 switches off its own object can never switch itself back on - the trap that
-`DanceCaptureModeController` existed to work around in the first place.
+`DanceCaptureModeController` existed to work around in the first place. `Play Controller` now
+holds that plus `PlayModeUI`, and nothing else.
+
+### The take is chosen in exactly one place
+
+`PlayModeController.take` pushes down to `DancePlayer` and `DanceRecordingBeatSource` on every
+mode switch, so both of their own `recording` fields are left empty in this scene. The fields
+stay on the components because both run standalone in other scenes.
+
+This was not merely duplication. With all three pointing at the same asset, the guard in
+`StartGuide()` - `player.Recording != take` - was permanently false, so **the push had never
+run once.** The mechanism that is supposed to be authoritative was masked by the duplicate that
+made it redundant, and would have executed for the first time on the day the two disagreed.
 
 ### Hold-B moved up a level
 

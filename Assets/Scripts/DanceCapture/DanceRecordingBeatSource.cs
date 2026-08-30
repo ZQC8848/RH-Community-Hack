@@ -13,6 +13,9 @@ namespace RHCommunityHack.DanceCapture
     public class DanceRecordingBeatSource : BeatPlacementSource
     {
         [Header("Source")]
+        [Tooltip("Assign this when the source runs on its own, as it does in SampleScene. In " +
+                 "PlayScene, leave it EMPTY - PlayModeController owns the take and pushes it in " +
+                 "via SetRecording(). A value here is silently overwritten.")]
         [SerializeField] DanceRecording recording;
 
         [Header("Anchoring")]

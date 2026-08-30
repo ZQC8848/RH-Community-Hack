@@ -20,8 +20,10 @@ namespace RHCommunityHack.Play
         public enum Mode { Beat, Guide }
 
         [Header("Take")]
-        [Tooltip("Both modes read this one recording, so the orbs and the beat chart can never " +
-                 "end up performing different takes.")]
+        [Tooltip("The ONE place the take is chosen. Pushed down to DancePlayer and to " +
+                 "DanceRecordingBeatSource on every mode switch, so leave their own recording " +
+                 "fields empty in this scene - assigning them as well only creates two answers " +
+                 "to one question.")]
         [SerializeField] DanceRecording take;
 
         [Header("Beat mode")]
@@ -152,12 +154,12 @@ namespace RHCommunityHack.Play
             foreach (var volume in handHitVolumes)
                 if (volume != null) volume.SetActive(beat);
 
+            // DancePlayer lives UNDER guideRoot, so this switches it off too. That matters for
+            // more than tidiness: DancePlayer owns its own hold-B action, and left running it
+            // would re-anchor and restart playback in the middle of beat mode. Keeping it inside
+            // the group means the grouping enforces that, rather than a line here that has to be
+            // remembered.
             if (guideRoot != null) guideRoot.SetActive(!beat);
-
-            // Disable the component, not just the orbs: DancePlayer owns its own hold-B action,
-            // and left enabled it would happily re-anchor and restart playback in the middle of
-            // beat mode.
-            if (player != null) player.enabled = !beat;
 
             if (beat) StartBeat();
             else StartGuide();

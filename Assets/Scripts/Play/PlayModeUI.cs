@@ -15,8 +15,9 @@ namespace RHCommunityHack.Play
     public class PlayModeUI : MonoBehaviour
     {
         [SerializeField] PlayModeController controller;
+        [Tooltip("Guide-mode follow rate. Lives under the Guide Mode group, so it stops " +
+                 "updating in beat mode and its last-pass numbers stay frozen and readable.")]
         [SerializeField] DanceFollowScore followScore;
-        [SerializeField] DancePlayer player;
         [SerializeField] Text statusText;
 
         static readonly Color BeatColour = new Color(1f, 0.75f, 0.35f);
@@ -28,8 +29,8 @@ namespace RHCommunityHack.Play
             if (statusText == null || controller == null) return;
 
             // Holding B takes priority: without it there is no way to tell a hold in progress
-            // from a button that did nothing. Read from the controller, not the player - the
-            // player is disabled in beat mode, where the gesture still has to work.
+            // from a button that did nothing. Read from the controller, not from DancePlayer -
+            // the player is switched off in beat mode, where the gesture still has to work.
             if (controller.RecalibrateProgress > 0f)
             {
                 float hold = controller.RecalibrateHoldSeconds;

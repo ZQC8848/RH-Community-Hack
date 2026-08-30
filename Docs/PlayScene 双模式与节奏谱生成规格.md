@@ -24,7 +24,28 @@
 
 ### 2.1 分组
 
-场景里有 `Beat Mode` 和 `Guide Mode` 两个空物体作为分组根，切换就是每侧一次 `SetActive`。两个组都保持 identity（位置 0、旋转 0、缩放 1）——`GuideOrb` 把 `orbRadius` 当**世界**半径，父节点带缩放会让它报警。
+**一条规则：只服务某一个模式的东西，就必须放在那个模式的组里。** 分组不只是为了好看——它是强制执行清理的机制。
+
+```
+Play Controller          永不停用。只放集成层
+  ├─ PlayModeController
+  └─ PlayModeUI
+
+Beat Mode                分组根，随模式 SetActive
+  ├─ BeatSpawner        → BeatSpawner + DanceRecordingBeatSource
+  ├─ Left Combo Trail
+  └─ Right Combo Trail
+
+Guide Mode               分组根，随模式 SetActive
+  ├─ Dance Player       → DancePlayer + DanceFollowScore
+  │    └─ Music         回放用 AudioSource
+  ├─ Left / Right Guide Orb
+  └─ Left / Right Hand Trail
+```
+
+两个组都保持 identity（位置 0、旋转 0、缩放 1）——`GuideOrb` 把 `orbRadius` 当**世界**半径，父节点带缩放会让它报警。
+
+> **两个组在存盘时必须都是激活的。** 场景加载时所有 `Awake` 先跑一遍，然后 `PlayModeController.Start()` 才去关掉一侧。存盘时就关着的那侧，`Awake` 永远不会在加载时跑。
 
 命中体积（`Beat Hit Volume`）是手柄的子物体，没法分进组里，由控制器单独开关。
 
@@ -34,7 +55,7 @@
 
 它挂在 `Play Controller` 上，那个物体在任何模式下都不会被关掉。
 
-### 2.3 切换时必须清理的四件事
+### 2.3 切换时必须清理的三件事
 
 每一件都是"所有者被关掉之后仍然活着"的状态：
 
@@ -43,13 +64,27 @@
 | 销毁在场的 `BeatTarget` | 它们继续跑自己的状态机，在模式已经切走之后逐个判成 Miss-Timeout |
 | `BeatSpawner.StopSpawning()` | 定时器继续跑 |
 | `GuideOrb.ClearTrail()` ×2 | world-space 粒子**不会**因为发射体被隐藏而消失，会挂在空中 |
-| **禁用 `DancePlayer` 组件本身** | 它自带长按 B 的 InputAction，留着启用会在 beat 模式中途重锚并重启播放 |
 
-最后一条容易漏：只关引导球是不够的，`DancePlayer` 还活着就会被 B 键唤醒。
+`TearDown()` 在 `SetActive(false)` **之前**跑，所以清理的时候对象还是活的。顺序反了就清不到。
+
+> **原来还有第四件：手动 `player.enabled = !beat`。** 现在 `DancePlayer` 挂在 `Guide Mode` 组内，分组开关自然把它一起关了，那行已删。这不只是少一行代码：原先那行是**一条必须被记住的规矩**，任何人新增一个只属于 guide 模式的组件都得想起来再加一行；现在只要把它放进组里就行了。
 
 ### 2.4 `BeatSpawner.startDelay` 的含义变了
 
 `StartSpawning()` 在**每次切换**都会重新套用 `startDelay`。原来的 5 秒是为"按 Play 然后戴头显"准备的，但 beat 模式从来不是启动模式，那 5 秒只会出现在主动切换时——切过去然后五秒钟什么都不发生，读起来像坏了。已改成 **1.5s**（一个生成间隔）。
+
+### 2.5 take 只在一处指定
+
+`PlayModeController.take` 是**唯一**指定 take 的地方，切模式时往下推：
+
+```
+StartBeat()  → beatSource.SetRecording(take)
+StartGuide() → player.LoadRecording(take)
+```
+
+所以 `DancePlayer.recording` 和 `DanceRecordingBeatSource.recording` 在本场景里**必须留空**。字段本身要保留——这两个组件在 `DanceCaptureScene` / `SampleScene` 里是独立工作的，那时候靠自己的字段。
+
+> **为什么这不只是"冗余"。** 之前三处都指向同一个资产，于是 `StartGuide()` 里那句守卫 `player.Recording != take` 恒为 `false`——**分发路径从来没执行过**。真正该生效的机制被重复赋值掩盖着，只有等到两边不一致那天才会第一次跑到那条分支。现在它每次切到 guide 模式都会真的执行。
 
 ## 3. 节奏谱的位置来源
 

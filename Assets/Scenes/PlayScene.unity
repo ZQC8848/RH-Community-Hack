@@ -915,8 +915,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 432848884}
-  - component: {fileID: 432848882}
-  - component: {fileID: 432848887}
   - component: {fileID: 432848889}
   - component: {fileID: 432848888}
   m_Layer: 0
@@ -926,31 +924,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &432848882
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 432848881}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8142e1a41cd0cd44b86ce0b7e6b37524, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::RHCommunityHack.DanceCapture.DancePlayer
-  recording: {fileID: 11400000, guid: 4875776bed126454b92d9779b0158fee, type: 2}
-  head: {fileID: 1273038228}
-  leftProxy: {fileID: 1140365252}
-  rightProxy: {fileID: 1087047548}
-  playOnStart: 0
-  loop: 1
-  loopPause: 0.5
-  musicSource: {fileID: 1943407061}
-  videoPlayer: {fileID: 387790745}
-  warmUpVideoOnLoad: 1
-  restartVideoEachLoop: 1
-  recalibrateHoldSeconds: 3
-  handleRecalibrateInput: 0
 --- !u!4 &432848884
 Transform:
   m_ObjectHideFlags: 0
@@ -963,25 +936,9 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 1943407062}
+  m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &432848887
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 432848881}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d716fc638f365254ca698669c86aa9ff, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::RHCommunityHack.DanceCapture.DanceFollowScore
-  player: {fileID: 432848882}
-  leftOrb: {fileID: 1140365251}
-  rightOrb: {fileID: 1087047547}
 --- !u!114 &432848888
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -995,8 +952,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RHCommunityHack.Play.PlayModeUI
   controller: {fileID: 432848889}
-  followScore: {fileID: 432848887}
-  player: {fileID: 432848882}
+  followScore: {fileID: 1535561965}
   statusText: {fileID: 1703331663}
 --- !u!114 &432848889
 MonoBehaviour:
@@ -1018,7 +974,7 @@ MonoBehaviour:
   - {fileID: 1741643326}
   - {fileID: 819414547}
   guideRoot: {fileID: 2080891313}
-  player: {fileID: 432848882}
+  player: {fileID: 1535561966}
   orbs:
   - {fileID: 1140365251}
   - {fileID: 1087047547}
@@ -1677,6 +1633,80 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1767192434, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
   m_PrefabInstance: {fileID: 1273038225}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1535561963
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1535561964}
+  - component: {fileID: 1535561966}
+  - component: {fileID: 1535561965}
+  m_Layer: 0
+  m_Name: Dance Player
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1535561964
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1535561963}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1943407062}
+  m_Father: {fileID: 2080891314}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1535561965
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1535561963}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d716fc638f365254ca698669c86aa9ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RHCommunityHack.DanceCapture.DanceFollowScore
+  player: {fileID: 1535561966}
+  leftOrb: {fileID: 1140365251}
+  rightOrb: {fileID: 1087047547}
+--- !u!114 &1535561966
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1535561963}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8142e1a41cd0cd44b86ce0b7e6b37524, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RHCommunityHack.DanceCapture.DancePlayer
+  recording: {fileID: 0}
+  head: {fileID: 1273038228}
+  leftProxy: {fileID: 1140365252}
+  rightProxy: {fileID: 1087047548}
+  playOnStart: 0
+  loop: 1
+  loopPause: 0.5
+  musicSource: {fileID: 1943407061}
+  videoPlayer: {fileID: 387790745}
+  warmUpVideoOnLoad: 1
+  restartVideoEachLoop: 1
+  recalibrateHoldSeconds: 3
+  handleRecalibrateInput: 0
 --- !u!1 &1572295095
 GameObject:
   m_ObjectHideFlags: 0
@@ -1745,7 +1775,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c76552c7c20d318468c61dba780977cd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RHCommunityHack.DanceCapture.DanceRecordingBeatSource
-  recording: {fileID: 11400000, guid: 4875776bed126454b92d9779b0158fee, type: 2}
+  recording: {fileID: 0}
   head: {fileID: 1273038228}
   loop: 1
   placeLeft: 1
@@ -1763,7 +1793,7 @@ GameObject:
   - component: {fileID: 1649861096}
   - component: {fileID: 1649861095}
   m_Layer: 0
-  m_Name: Dance Capture UI
+  m_Name: Play UI
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2470,7 +2500,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 432848884}
+  m_Father: {fileID: 1535561964}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1956143538
 GameObject:
@@ -2665,6 +2695,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 1535561964}
   - {fileID: 1140365252}
   - {fileID: 1087047548}
   - {fileID: 510765633}

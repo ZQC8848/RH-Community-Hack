@@ -15,6 +15,9 @@ namespace RHCommunityHack.DanceCapture
     public class DancePlayer : MonoBehaviour
     {
         [Header("Source")]
+        [Tooltip("Assign this when DancePlayer runs on its own, as it does in the capture scene. " +
+                 "In PlayScene, leave it EMPTY - PlayModeController owns the take and pushes it " +
+                 "in via LoadRecording(). A value here is silently overwritten.")]
         [SerializeField] DanceRecording recording;
 
         [Header("Scene references")]
