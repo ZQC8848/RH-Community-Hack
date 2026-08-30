@@ -23,14 +23,8 @@ namespace RHCommunityHack.DanceCapture
     {
         enum Phase { Empty, Warming, Seeking, Cued, Playing }
 
-        [Tooltip("Play this clip from scene load with no take driving it. Leave it empty when the " +
-                 "take supplies the video - a take always wins, this only fills an idle screen.")]
-        [SerializeField] VideoClip playOnLoad;
-        [Tooltip("Loop the play-on-load clip. Looping happens inside the decoder, so it costs no " +
-                 "second warm-up - unlike stopping and starting again.")]
-        [SerializeField] bool loopPlayOnLoad = true;
-
         VideoPlayer vp;
+        Renderer screenRenderer;
         Phase phase = Phase.Empty;
         VideoClip current;
         bool resumeAfterSeek;
@@ -64,17 +58,18 @@ namespace RHCommunityHack.DanceCapture
             vp = GetComponent<VideoPlayer>();
             // This component decides when the clip starts; playOnAwake would race it.
             vp.playOnAwake = false;
+            screenRenderer = GetComponent<Renderer>();
+            ApplyVisibility();
         }
 
-        void Start()
+        // A take with no video shows NO screen, rather than a black rectangle. The quad is drawn
+        // only once a picture actually exists behind it - a RenderTexture nobody has written to
+        // still holds whatever was in it last, which is precisely what made an unassigned video
+        // look like a broken renderer.
+        void ApplyVisibility()
         {
-            // Only claim an idle screen. A take that warmed the screen in its own Awake has
-            // already decided what belongs here, and its clip must not be swapped out from under it.
-            if (playOnLoad == null || phase != Phase.Empty) return;
-
-            vp.isLooping = loopPlayOnLoad;
-            resumeAfterWarm = true;
-            WarmUp(playOnLoad);
+            if (screenRenderer != null && screenRenderer.enabled != IsReady)
+                screenRenderer.enabled = IsReady;
         }
 
         void OnDisable()
@@ -103,6 +98,27 @@ namespace RHCommunityHack.DanceCapture
         }
 
         public bool IsReadyFor(VideoClip clip) => clip != null && clip == current && IsReady;
+
+        // Warm the clip and start it the moment a picture exists, with nothing to stay in step
+        // with. This is for a mode where the video is just playing in the room; guide mode uses
+        // WarmUp + CueTo instead, because there the video has to line up with the take.
+        //
+        // The clip is still the take's - this method takes it as an argument rather than owning
+        // a field of its own, so there is no second place a video can be chosen from.
+        public void PlayFreely(VideoClip clip)
+        {
+            if (clip == null) return;
+            if (clip == current && phase == Phase.Playing) return;
+
+            if (clip != current || phase == Phase.Empty)
+            {
+                resumeAfterWarm = true;
+                WarmUp(clip);
+                return;
+            }
+
+            Resume();
+        }
 
         // Seeks and stays paused, so the caller can start the picture at an exact later moment.
         public void CueTo(double time)
@@ -153,6 +169,8 @@ namespace RHCommunityHack.DanceCapture
         {
             if (vp == null) return;
 
+            ApplyVisibility();
+
             if (phase == Phase.Seeking &&
                 UnityEngine.Time.realtimeSinceStartup - seekStartedAt > SeekTimeout)
             {
@@ -172,15 +190,17 @@ namespace RHCommunityHack.DanceCapture
 
             if (resumeAfterWarm)
             {
-                // Already playing from the warm-up, so just let it run. Pausing and seeking back
-                // to zero here would discard the frames those seconds just bought.
+                // Already running from the warm-up, so let it run. Pausing and seeking back to
+                // zero here would throw away the frames those seconds just bought.
                 resumeAfterWarm = false;
                 phase = Phase.Playing;
+                ApplyVisibility();
                 return;
             }
 
             vp.Pause();
             phase = Phase.Cued;
+            ApplyVisibility();
             CueTo(0d);
         }
 

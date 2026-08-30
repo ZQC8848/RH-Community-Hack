@@ -26,6 +26,14 @@ namespace RHCommunityHack.Play
                  "to one question.")]
         [SerializeField] DanceRecording take;
 
+        [Tooltip("On-stage dancers driven by the take's character animation. They perform in " +
+                 "both modes, so they live outside the two mode groups.")]
+        [SerializeField] DanceCharacterDirector characters;
+
+        [Tooltip("The room's video screen. Shows the take's video in either mode; a take with no " +
+                 "video leaves the screen hidden entirely.")]
+        [SerializeField] DanceVideoScreen videoScreen;
+
         [Header("Beat mode")]
         [SerializeField] GameObject beatRoot;
         [SerializeField] BeatSpawner spawner;
@@ -141,6 +149,23 @@ namespace RHCommunityHack.Play
             OnRecalibrated?.Invoke();
         }
 
+        // The video belongs to the take, so it shows in BOTH modes - but who drives it differs.
+        // Beat mode has nothing for it to stay in step with, so it simply plays. Guide mode hands
+        // it to DancePlayer, which cues it to the take's in-point at the start of every pass.
+        //
+        // A take with no video is left alone: the screen hides itself rather than showing a
+        // rectangle of whatever the RenderTexture last held.
+        void ApplyVideo(bool beat)
+        {
+            if (videoScreen == null) return;
+
+            var clip = take != null ? take.video : null;
+            if (clip == null) return;
+
+            if (beat) videoScreen.PlayFreely(clip);
+            else videoScreen.WarmUp(clip);
+        }
+
         public void Toggle() => SetMode(CurrentMode == Mode.Beat ? Mode.Guide : Mode.Beat);
 
         public void SetMode(Mode mode)
@@ -149,6 +174,11 @@ namespace RHCommunityHack.Play
 
             CurrentMode = mode;
             bool beat = mode == Mode.Beat;
+
+            // Same take, same single source of truth as the player and the beat source. The
+            // dancers are not mode-specific, so this runs whichever branch is about to.
+            if (characters != null) characters.SetRecording(take);
+            ApplyVideo(beat);
 
             if (beatRoot != null) beatRoot.SetActive(beat);
             foreach (var volume in handHitVolumes)

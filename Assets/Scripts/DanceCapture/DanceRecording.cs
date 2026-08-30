@@ -30,6 +30,11 @@ namespace RHCommunityHack.DanceCapture
                  "was captured without one. The video's own audio track plays with it.")]
         public VideoClip video;
 
+        [Tooltip("Character animation for this take - the same performance as a skeletal clip, " +
+                 "used to drive the on-stage dancers. Null if no mocap was captured alongside; " +
+                 "the dancers then simply stand in their bind pose.")]
+        public AnimationClip characterAnimation;
+
         [Header("Trim (non-destructive)")]
         [Min(0f)] public float inPoint;
         [Tooltip("End of the trimmed range. Zero or less means 'play to the end of the capture'.")]

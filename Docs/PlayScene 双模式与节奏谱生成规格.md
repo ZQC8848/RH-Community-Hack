@@ -73,6 +73,19 @@ Guide Mode               分组根，随模式 SetActive
 
 `StartSpawning()` 在**每次切换**都会重新套用 `startDelay`。原来的 5 秒是为"按 Play 然后戴头显"准备的，但 beat 模式从来不是启动模式，那 5 秒只会出现在主动切换时——切过去然后五秒钟什么都不发生，读起来像坏了。已改成 **1.5s**（一个生成间隔）。
 
+### 2.6 视频由 take 决定，两个模式都放
+
+视频只有一个来源：`take.video`。`DanceVideoScreen` 上**没有**任何自己的 clip 字段。
+
+| 模式 | 谁驱动 | 行为 |
+|---|---|---|
+| Beat | `PlayModeController.ApplyVideo()` → `PlayFreely()` | 没有要对齐的东西，直接放 |
+| Guide | `DancePlayer` | 每遍开头 `CueTo(inPoint)`，跟 take 对拍 |
+
+**take 没挂视频 → 整块屏幕的 Renderer 关掉**，而不是留一块黑板。RenderTexture 没人写的时候保留的是上一次的内容，正是这一点让"没配视频"长期看起来像"渲染器坏了"。
+
+> **视频必须由 `PlayModeController` 而不是 `DancePlayer` 起头。** `DancePlayer` 现在在 `Guide Mode` 组里，beat 模式下是关着的。只让它管视频的话，从默认的 beat 模式启动时屏幕全黑——这是分组重构引入的回归，实测才发现。
+
 ### 2.5 take 只在一处指定
 
 `PlayModeController.take` 是**唯一**指定 take 的地方，切模式时往下推：
@@ -166,7 +179,43 @@ BeatPlacementSource（抽象基类，Interaction/）
 
 beat 模式重锚时**会先销毁在场的球**——它们是按旧参考系放置的，留着会让画面上同时存在两套坐标系。
 
-## 6. 可调变量表
+## 6. 舞台角色：一条 clip 驱动三个人
+
+场景里站着三个 `LaunchPad_Compassion_Dance_test` 实例，由 `DanceCharacterDirector`（挂在 `Dance Characters` 上）统一驱动。
+
+| | |
+|---|---|
+| clip 来源 | `DanceRecording.characterAnimation`，由 `PlayModeController` 推下来 |
+| clip 长度 | 29.93 s / 30 fps |
+| 站位 | `(-2.4, 0, 2.2)`、`(2.4, 0, 2.2)`、`(0, 0, 1.8)`，面朝玩家 |
+| 尺寸 | 身高 1.788 m，scale 1，脚在 y=0 |
+
+**不需要 AnimatorController。** FBX 导入后带的是一个空控制器的 `Animator`，中控用 Playables 图把 clip 直接喂进去。所以加第 4、第 5 个舞者只是往数组里多拖一个引用。
+
+### 6.1 ⚠️ 三个人必须各自持有一个 playable
+
+> **共用同一个 `AnimationClipPlayable`、接三个 `AnimationPlayableOutput` 是不行的，而且它不报错。**
+
+看起来更漂亮的写法是：一个 clip playable，三个 output 都 `SetSourcePlayable` 指向它——同步就成了结构上的必然。**实测只有第一个角色会动**，另外两个停在 bind pose，控制台干干净净。
+
+所以现在是**每人一个 playable，每帧喂同一个时间值**。共享的是**时间**，不是 playable：
+
+```csharp
+for (int i = 0; i < clipPlayables.Length; i++) clipPlayables[i].SetTime(t);
+graph.Evaluate();
+```
+
+实测三人 `LeftForeArm` 与 `Hips.y` 逐位相同。
+
+### 6.2 PlayableGraph 必须手动销毁
+
+`PlayableGraph` 不走 GC。`OnDisable` / `OnDestroy` 里不 `Destroy()` 就会泄漏，并且继续往它绑定过的 `Animator` 上写。
+
+### 6.3 舞者不跟 take 对齐
+
+角色 clip 29.93 s、take 48.67 s，长度对不上，所以中控用自己的时钟独立循环（实测 take 在 11.95 s 时舞者在 18.34 s）。**三人彼此严格同步，但整体不跟 take 同步。** 要对齐得先决定用哪种方式：裁剪 clip、变速、还是让中控跟着 `DancePlayer.PlayheadSeconds` 走。
+
+## 7. 可调变量表
 
 | 变量 | 位置 | 默认值 |
 |---|---|---|
@@ -181,25 +230,27 @@ beat 模式重锚时**会先销毁在场的球**——它们是按旧参考系�
 | `maxTrailSeconds` | `BeatComboTrail` | 0.8 s |
 | `lowLevelDullness` | `BeatComboTrail` | 0.85 |
 | `recalibrateHoldSeconds` | `PlayModeController` | 1 s |
-| `startMode` | `PlayModeController` | Guide |
+| `startMode` | `PlayModeController` | Beat |
+| `loop` | `DanceCharacterDirector` | true，角色 clip 放完从头开始 |
+| `dancers` | `DanceCharacterDirector` | 3 个 Animator |
 
-## 7. 已知问题
+## 8. 已知问题
 
-**7.1 原始动作数据不等于好谱面。** 实测整段 take 里手到头部的距离在 **0.18–1.09 m** 之间，而正常臂展约 0.3–0.8 m：
+**8.1 原始动作数据不等于好谱面。** 实测整段 take 里手到头部的距离在 **0.18–1.09 m** 之间，而正常臂展约 0.3–0.8 m：
 
 - 0.18 m → 球生成在离脸不到 20 公分处，既难打也不舒服
 - 1.09 m → 超出手臂能及范围，不迈步够不着
 
 **目前没有距离过滤，是明确的选择**。要加的话，做法是只在 0.3–0.75 m 之间的采样点生成，之外跳过这一拍或把位置钳制到球壳上。
 
-**7.2 扣分速率可能偏严。** 每 1.5 秒生成 2 颗球，漏掉就是每 1.5 秒 −2；而从 0 升到 5 需要 3 次 Perfect。漏几拍拖尾就清空了。符合规则，但手感要实测。
+**8.2 扣分速率可能偏严。** 每 1.5 秒生成 2 颗球，漏掉就是每 1.5 秒 −2；而从 0 升到 5 需要 3 次 Perfect。漏几拍拖尾就清空了。符合规则，但手感要实测。
 
-**7.3 没有音轨。** 现有三段 take 的 `music` 和 `video` 都是 none。音游没有音乐，节拍就只是个定时器。
+**8.3 节拍不来自音乐。** `Dance_1984Dancinginstreets` 现在挂了视频（带 AAC 音轨，`audioOutputMode = Direct`），所以场景里有声音了；但 `music` 仍是 none，而且**生成节拍的依据仍然只是定时器**，跟音乐没有任何关系。另外两段 take 仍然无音无视频。
 
-**7.4 全部未在头显验证。** 模式切换、清理、UI、combo 等级都只通过组件状态和真实判定在编辑器里验证过。
+**8.4 全部未在头显验证。** 模式切换、清理、UI、combo 等级都只通过组件状态和真实判定在编辑器里验证过。
 
-## 8. 明确不在本规格范围内
+## 9. 明确不在本规格范围内
 
 - **从录制数据提取节奏**。时间仍然是固定间隔的定时器，只有位置来自录制。这是设计文档 2.2/3 的核心机制，仍未实现，也是整个设计里最大的未知数。
-- **距离过滤**（见 §7.1）。
+- **距离过滤**（见 §8.1）。
 - **计分与结算**。`DanceFollowScore` 只统计 guide 模式的跟随率；beat 模式除了 combo 等级之外没有分数。

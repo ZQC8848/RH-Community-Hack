@@ -266,7 +266,8 @@ travel the take). **X** switches; both modes read the same take.
 
 Spec: [../Docs/PlayScene 双模式与节奏谱生成规格.md](../Docs/PlayScene%20%E5%8F%8C%E6%A8%A1%E5%BC%8F%E4%B8%8E%E8%8A%82%E5%A5%8F%E8%B0%B1%E7%94%9F%E6%88%90%E8%A7%84%E6%A0%BC.md).
 Decisions: [decisions/beats-from-recorded-motion.md](decisions/beats-from-recorded-motion.md),
-[decisions/play-scene-two-modes.md](decisions/play-scene-two-modes.md).
+[decisions/play-scene-two-modes.md](decisions/play-scene-two-modes.md),
+[decisions/one-clip-many-dancers.md](decisions/one-clip-many-dancers.md).
 
 - **`DanceCaptureScene` is untouched and still the recording scene.** The whole take pipeline and
   the collaborator workflow in `DANCE_RECORDING_GUIDE.md` depend on it - PlayScene is a copy, not
