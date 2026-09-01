@@ -363,11 +363,35 @@ missing, not a bug. Each one's `label` says which script page it needs footage f
 > theory here was depth fighting against the ground; raising the line to 0.6m produced a
 > byte-identical screenshot, which is what ruled it out.
 
-> ⚠️ **18 skinned dancers now exist in the scene** (6 stages x 3), up from 9. The distance
-> culling above fixes the *running* half - at most 3 are ever live - but **not the loading half**:
-> all 18 SkinnedMeshRenderers are still instantiated at scene load and hold their memory. Never
-> measured on a headset. The fix if it does not hold up is streaming stages in by distance, not
-> cutting the dancer count.
+**Dancer loading was optimised on 2026-09-01, entirely through FBX import settings** - no code
+and no scene changes, since import settings live in the `.meta`. `Optimize Game Objects` on,
+blend shapes / cameras / lights off, skin weights 4 -> 2:
+
+```
+scene transforms  1368 -> 198     (dancer bones had been 88% of them)
+per dancer        67   -> 2
+mesh              13.22 -> 10.19 MB
+```
+
+The mesh and its two 1024 ASTC textures (~25MB together) were always shared across all 18
+instances, so they were never the loading cost - the 18 copies of a 67-node bone hierarchy were.
+
+> ⚠️ **`Optimize Game Objects` being on is load-bearing.** Bones stop being GameObjects:
+> `SkinnedMeshRenderer.bones` is empty and `rootBone` is null. It is safe here only because
+> nothing reads a bone - grep for `mixamorig`, `.bones` and `GetBoneTransform` finds nothing in
+> `Assets/Scripts`. If you ever need to attach something to a dancer's hand, expose that one bone
+> under **Extra Transforms to Expose** rather than turning the option off, which would put 1170
+> transforms back.
+
+> The skin-weight change costs nothing visually: `QualitySettings` has one level here, `Mobile`,
+> already capped at `TwoBones`, so the extra two weights per vertex were being loaded and then
+> ignored. Note the *committed* QualitySettings still has a second `PC` level at 4 - the local
+> deletion of that level is uncommitted.
+
+> 🔴 **The real budget problem is triangles, and it is untouched.** 91,258 tris per dancer x 3 =
+> **273,774**, against a standalone-VR frame budget of roughly 100-200k - over budget on dancers
+> alone, before domes, screens, UI and keyed video. That needs the model decimating to ~10-15k or
+> an LODGroup, which is an art change.
 
 > ⚠️ **The ground plane's material is `Assets/Materials/test Material.mat`.** It is scruffily
 > named and looks disposable, and it was left out of several commits on exactly that reasoning -
