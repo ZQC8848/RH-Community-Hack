@@ -23,6 +23,13 @@ namespace RHCommunityHack.DanceCapture
     {
         enum Phase { Empty, Warming, Seeking, Cued, Playing }
 
+        [Tooltip("Loop the clip instead of parking on its last frame. Looping is handled inside " +
+                 "the decoder, so unlike stopping and starting again it costs no second warm-up - " +
+                 "which is the whole reason this component exists. Beat mode needs it: nothing " +
+                 "else restarts the video there, so without looping the screen freezes when the " +
+                 "clip runs out. Guide mode seeks the video per pass anyway, so it is unaffected.")]
+        [SerializeField] bool loop = true;
+
         VideoPlayer vp;
         Renderer screenRenderer;
         Phase phase = Phase.Empty;
@@ -58,6 +65,7 @@ namespace RHCommunityHack.DanceCapture
             vp = GetComponent<VideoPlayer>();
             // This component decides when the clip starts; playOnAwake would race it.
             vp.playOnAwake = false;
+            vp.isLooping = loop;
             screenRenderer = GetComponent<Renderer>();
             ApplyVisibility();
         }
@@ -98,6 +106,11 @@ namespace RHCommunityHack.DanceCapture
         }
 
         public bool IsReadyFor(VideoClip clip) => clip != null && clip == current && IsReady;
+
+        // Where the picture lands. Stages sample this rather than each holding their own
+        // reference to the RenderTexture asset, so there is one answer to "what is the video
+        // drawing into" even when three quads are showing it in turn.
+        public Texture OutputTexture => vp != null ? vp.targetTexture : null;
 
         // Warm the clip and start it the moment a picture exists, with nothing to stay in step
         // with. This is for a mode where the video is just playing in the room; guide mode uses

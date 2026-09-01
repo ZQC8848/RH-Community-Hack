@@ -80,6 +80,16 @@ namespace RHCommunityHack.DanceCapture
             if (rightOrb != null) rightOrb.ClearTrail();
         }
 
+        // Throw the running pass away WITHOUT recording it. Walking off a stage half way through
+        // must not write a half-danced pass into LastPass* - which is exactly what FinishPass
+        // would do, and it is the obvious-looking thing to call here.
+        public void Abandon()
+        {
+            leftFollowSeconds = 0f;
+            rightFollowSeconds = 0f;
+            passElapsed = 0f;
+        }
+
         void FinishPass()
         {
             if (passElapsed <= 0f) return;

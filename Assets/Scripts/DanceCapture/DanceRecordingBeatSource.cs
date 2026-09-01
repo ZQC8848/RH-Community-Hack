@@ -32,6 +32,10 @@ namespace RHCommunityHack.DanceCapture
         [SerializeField] bool placeLeft = true;
         [SerializeField] bool placeRight = true;
 
+        // See DancePlayer.AnchorFacing - a stage points both of these at the same transform so
+        // the orbs and the chart cannot end up facing different ways.
+        public Transform AnchorFacing { get; set; }
+
         public bool HasCalibrated { get; private set; }
         public float RecordingSeconds { get; private set; }
 
@@ -60,7 +64,7 @@ namespace RHCommunityHack.DanceCapture
                     return;
                 }
 
-                frame = DanceReferenceFrame.Capture(head);
+                frame = DanceReferenceFrame.Capture(head, AnchorFacing);
                 HasCalibrated = true;
             }
 

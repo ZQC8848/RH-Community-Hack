@@ -18,7 +18,17 @@ namespace RHCommunityHack.Play
         [Tooltip("Guide-mode follow rate. Lives under the Guide Mode group, so it stops " +
                  "updating in beat mode and its last-pass numbers stay frozen and readable.")]
         [SerializeField] DanceFollowScore followScore;
+        [Tooltip("Left empty in PlayScene: each stage owns its own world-fixed panel, and " +
+                 "DancePlaceManager points this at whichever one the player is standing on.")]
         [SerializeField] Text statusText;
+
+        // One writer, three panels. Passing null blanks the readout, which is what should happen
+        // when the player is not on a stage at all.
+        public void SetTarget(Text target)
+        {
+            if (statusText != null && statusText != target) statusText.text = "";
+            statusText = target;
+        }
 
         static readonly Color BeatColour = new Color(1f, 0.75f, 0.35f);
         static readonly Color GuideColour = new Color(0.45f, 0.8f, 1f);

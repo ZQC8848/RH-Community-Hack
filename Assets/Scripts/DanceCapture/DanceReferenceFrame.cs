@@ -40,6 +40,25 @@ namespace RHCommunityHack.DanceCapture
             return new DanceReferenceFrame(head.position, Quaternion.LookRotation(forward.normalized, Vector3.up));
         }
 
+        // Position always comes from the head: recorded poses mean "this far from my head", and
+        // anchoring anywhere else throws away the thing that makes the data transfer between
+        // dancers. Rotation is allowed to come from somewhere else, because a fixed stage wants
+        // the dance facing its screen rather than facing whichever way the player arrived looking.
+        //
+        // A null or degenerate `facing` falls back to the head, so callers that have no stage
+        // behave exactly as before.
+        public static DanceReferenceFrame Capture(Transform head, Transform facing)
+        {
+            if (head == null || facing == null) return Capture(head);
+
+            Vector3 forward = facing.forward;
+            forward.y = 0f;
+            if (forward.sqrMagnitude < 1e-6f) return Capture(head);
+
+            return new DanceReferenceFrame(head.position,
+                                           Quaternion.LookRotation(forward.normalized, Vector3.up));
+        }
+
         public Vector3 InverseTransformPoint(Vector3 worldPosition)
             => Quaternion.Inverse(Rotation) * (worldPosition - Origin);
 

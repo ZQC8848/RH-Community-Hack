@@ -10715,6 +10715,7 @@ MonoBehaviour:
     rightPosition: {x: 0.08865504, y: -0.45263314, z: 0.4933286}
     rightRotation: {x: 0.07249125, y: 0.017929407, z: 0.073647715, w: -0.99448454}
   music: {fileID: 0}
-  video: {fileID: 0}
+  video: {fileID: 32900000, guid: 4c6aab1641d6f1349b1dd404e84e9424, type: 3}
+  characterAnimation: {fileID: -4671056281497532287, guid: ca24152a060f39046916d4f43f066989, type: 3}
   inPoint: 0
   outPoint: 0

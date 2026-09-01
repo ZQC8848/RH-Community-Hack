@@ -51,6 +51,10 @@ namespace RHCommunityHack.DanceCapture
         [SerializeField] bool handleRecalibrateInput = true;
 
 
+        // Set by whoever owns the stage the player is standing on. Null anchors to the head, as
+        // the capture scene does. Runtime only - a stage supplies it, it is never authored here.
+        public Transform AnchorFacing { get; set; }
+
         public bool IsPlaying { get; private set; }
         public DanceRecording Recording => recording;
         public float PlayheadSeconds { get; private set; }
@@ -166,7 +170,7 @@ namespace RHCommunityHack.DanceCapture
                 return false;
             }
 
-            frame = DanceReferenceFrame.Capture(head);
+            frame = DanceReferenceFrame.Capture(head, AnchorFacing);
             HasCalibratedOrigin = true;
             return true;
         }

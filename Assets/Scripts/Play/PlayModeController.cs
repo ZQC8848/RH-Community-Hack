@@ -19,19 +19,8 @@ namespace RHCommunityHack.Play
     {
         public enum Mode { Beat, Guide }
 
-        [Header("Take")]
-        [Tooltip("The ONE place the take is chosen. Pushed down to DancePlayer and to " +
-                 "DanceRecordingBeatSource on every mode switch, so leave their own recording " +
-                 "fields empty in this scene - assigning them as well only creates two answers " +
-                 "to one question.")]
-        [SerializeField] DanceRecording take;
-
-        [Tooltip("On-stage dancers driven by the take's character animation. They perform in " +
-                 "both modes, so they live outside the two mode groups.")]
-        [SerializeField] DanceCharacterDirector characters;
-
-        [Tooltip("The room's video screen. Shows the take's video in either mode; a take with no " +
-                 "video leaves the screen hidden entirely.")]
+        [Tooltip("The one VideoPlayer in the scene. Every stage borrows it in turn; the stages " +
+                 "themselves only own a quad and a poster.")]
         [SerializeField] DanceVideoScreen videoScreen;
 
         [Header("Beat mode")]
@@ -46,8 +35,17 @@ namespace RHCommunityHack.Play
         [SerializeField] GameObject guideRoot;
         [SerializeField] DancePlayer player;
         [SerializeField] GuideOrb[] orbs;
+        [Tooltip("Cleared on teardown. Walking off a stage is a walk-off, not a pause, so a " +
+                 "half-danced pass must not be committed as a result.")]
+        [SerializeField] DanceFollowScore followScore;
+
+        [Header("Scoring")]
+        [Tooltip("Reset to zero on teardown, so a combo cannot be carried onto another stage.")]
+        [SerializeField] BeatComboTrail[] comboTrails;
 
         [Header("Start")]
+        [Tooltip("Which mode a stage opens in the first time. After that the player's last " +
+                 "choice carries from stage to stage.")]
         [SerializeField] Mode startMode = Mode.Guide;
 
         [Header("Recalibrate")]
@@ -57,6 +55,13 @@ namespace RHCommunityHack.Play
 
         public Mode CurrentMode { get; private set; }
         public DanceRecording Take => take;
+
+        // False whenever the player is not standing on a stage. Nothing spawns, nothing is drawn
+        // and the mode toggle does nothing until they step onto one.
+        public bool IsOnStage { get; private set; }
+
+        DanceRecording take;
+        DanceCharacterDirector characters;
 
         public event Action<Mode> OnModeChanged;
         public event Action OnRecalibrated;
@@ -104,11 +109,52 @@ namespace RHCommunityHack.Play
             recalibrateAction?.Dispose();
         }
 
-        void Start() => SetMode(startMode);
+        void Start()
+        {
+            CurrentMode = startMode;
+            LeaveStage();   // nothing is running until a stage says so
+        }
+
+        // Called by DancePlaceManager when the player steps onto a stage. Everything the stage
+        // knows arrives in one call, so there is no window where the take and the facing disagree.
+        public void EnterStage(DanceRecording stageTake, Transform facing, DanceCharacterDirector stageDancers)
+        {
+            take = stageTake;
+            characters = stageDancers;
+
+            // Both must face the same way or the orbs and the chart end up in different
+            // coordinate frames on the same stage.
+            if (player != null) player.AnchorFacing = facing;
+            if (beatSource != null) beatSource.AnchorFacing = facing;
+
+            IsOnStage = true;
+            SetMode(CurrentMode);
+        }
+
+        // Leaving abandons the run: this is a walk-off, not a pause.
+        public void LeaveStage()
+        {
+            TearDown();
+            IsOnStage = false;
+
+            if (beatRoot != null) beatRoot.SetActive(false);
+            if (guideRoot != null) guideRoot.SetActive(false);
+            foreach (var volume in handHitVolumes)
+                if (volume != null) volume.SetActive(false);
+
+            if (characters != null) characters.SetRecording(null);
+            if (videoScreen != null) videoScreen.Park();
+
+            take = null;
+            characters = null;
+            if (player != null) player.AnchorFacing = null;
+            if (beatSource != null) beatSource.AnchorFacing = null;
+        }
 
         void Update()
         {
             if (switchAction.WasPressedThisFrame()) Toggle();
+            if (!IsOnStage) { holdSeconds = 0f; return; }
             TickRecalibrateHold();
         }
 
@@ -166,13 +212,19 @@ namespace RHCommunityHack.Play
             else videoScreen.WarmUp(clip);
         }
 
-        public void Toggle() => SetMode(CurrentMode == Mode.Beat ? Mode.Guide : Mode.Beat);
+        public void Toggle()
+        {
+            if (!IsOnStage) return;
+            SetMode(CurrentMode == Mode.Beat ? Mode.Guide : Mode.Beat);
+        }
 
         public void SetMode(Mode mode)
         {
             TearDown();
 
             CurrentMode = mode;
+            if (!IsOnStage) return;
+
             bool beat = mode == Mode.Beat;
 
             // Same take, same single source of truth as the player and the beat source. The
@@ -209,6 +261,14 @@ namespace RHCommunityHack.Play
             // their lifetime wherever they were left.
             foreach (var orb in orbs)
                 if (orb != null) orb.ClearTrail();
+
+            // A combo is earned on one stage and does not travel to the next.
+            foreach (var trail in comboTrails)
+                if (trail != null) trail.SetLevel(0);
+
+            // Abandon, NOT FinishPass: the run is being thrown away, and FinishPass would file
+            // the half-danced pass as a real result.
+            if (followScore != null) followScore.Abandon();
         }
 
         // Beats in flight keep running their own state machine and would resolve as
