@@ -345,13 +345,28 @@ What moved onto `DanceRecording` to make that true: `poster`, the five chroma-ke
 room. A separate "stage profile" asset was rejected - it would restore the two-assignment-points
 problem that moving the take onto `DancePlace` was meant to end.
 
+**Teleport was removed from the prefab on 2026-09-01, on request.** The `Beacon` pillar is
+gone along with the `TeleportationAnchor` and `CapsuleCollider` it carried; the empty parent
+survives, renamed `Standing Anchor`, because `DancePlace.standingAnchor` points at it and it is
+what §4's position-from-player / facing-from-stage anchoring reads.
+
+> 🔴 **There is now no way to travel between stages.** The scene contains no
+> `TeleportationAnchor` and no `TeleportationArea` at all - only the rig's
+> `TeleportationProvider`, which has nothing valid to land on. The ray fires and nothing
+> happens. Thumbstick over 24m takes ten-plus seconds and is a sickness risk. Until something
+> replaces it, only the stage you spawn on is reachable. Options are listed in the spec, §5.0.
+
+Wayfinding moved to the domes: three differently coloured spheres you can see *into* from
+outside, which is a bigger landmark than the pillar was. **Do not give the domes colliders** -
+that stays a precondition for whatever replaces the teleport.
+
 Each stage now owns:
 
 - **its own dome and floor** - `ImmersiveSphere` R=8 with a `ImmersiveFloor` disc at the
   equator, centre 1cm up so the floor sits above the ground `Plane` and below the standing
-  marker. **The dome has no collider on purpose**: one would put a wall in front of every
-  cross-stage teleport arc. Verified - a ray from Stage 1's hand height to Stage 2's beacon
-  hits exactly one collider, the beacon, at 23.71m.
+  marker. **The dome has no collider on purpose**: one would put a wall in front of any
+  cross-stage ray. Verified while the beacons still existed - a ray from Stage 1's hand height
+  to Stage 2's beacon hit exactly one collider, the beacon, at 23.71m.
 - **its own `VideoPlayer`**. This is the change with a real payoff: a stage you have already
   visited stays *paused* rather than being torn down, so walking back onto it has a picture on
   the next frame. The single shared player could never do that - its clip changed on every
@@ -505,6 +520,9 @@ Load-bearing points:
   empty and let `DanceVideoScreen` allocate one per instance
 - **Hand-editing anything but `take` on a stage instance.** It works, and it quietly ends
   the property that made the prefab worth having
+- **Assuming you can still teleport between stages.** You cannot, since 2026-09-01 - the
+  ray fires and lands nowhere, which reads as a broken controller rather than as a missing
+  feature
 - **The three stages are laid out as an equilateral triangle, but the script wants a
   timeline** — a line, in date order, where teleporting means moving forward through
   history rather than picking a song. Undecided; noted in the mapping doc §5

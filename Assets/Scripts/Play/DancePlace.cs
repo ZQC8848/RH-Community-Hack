@@ -6,11 +6,16 @@ using RHCommunityHack.DanceCapture;
 namespace RHCommunityHack.Play
 {
     // One stage, and the root of the DanceStage prefab. Three of these stand 24m apart, and the
-    // player teleports between them to pick which dance they want - walking IS the song select,
+    // player moves between them to pick which dance they want - going there IS the song select,
     // which is why there is no menu.
     //
+    // 2026-09-01: the teleport beacon that used to stand on each stage has been removed on
+    // request, along with the TeleportationAnchor and collider it carried. Nothing in this
+    // prefab is a teleport target any more; how the player travels 24m between stages is now
+    // an open question, and the domes are what the stages are found by from a distance.
+    //
     // A stage owns everything local to it: its dome, its screen and its own VideoPlayer, its
-    // dancers, its panel, its beacon and the spot you stand on. It owns no gameplay. Orbs, beat
+    // dancers, its panel and the spot you stand on. It owns no gameplay. Orbs, beat
     // spawner, hit volumes and combo trails exist ONCE in the scene and are re-anchored to
     // whichever stage is occupied, because they are attached to the player's hands and there is
     // only one player. Copying them per stage would also mean scene references inside a prefab,
@@ -33,9 +38,9 @@ namespace RHCommunityHack.Play
         [SerializeField] DanceRecording take;
 
         [Header("Wiring (prefab-local - leave alone on instances)")]
-        [Tooltip("Where the player stands and WHICH WAY THEY FACE. Use the TeleportationAnchor's " +
-                 "own transform - keeping a second 'standing spot' beside it guarantees the two " +
-                 "disagree eventually.")]
+        [Tooltip("Where the player stands and WHICH WAY THEY FACE - the 'Standing Anchor' child. " +
+                 "One transform for both, because keeping a separate 'facing' object beside a " +
+                 "'position' object guarantees the two disagree eventually.")]
         [SerializeField] Transform standingAnchor;
 
         [Tooltip("The quad. Shows the take's poster when nobody is here and while the decoder " +
@@ -62,16 +67,6 @@ namespace RHCommunityHack.Play
 
         [Tooltip("The readout PlayModeUI writes into while this stage is occupied.")]
         [SerializeField] Text statusText;
-
-        [Tooltip("The pillar you teleport to, and the landmark this stage is found by from " +
-                 "across the room. Switched OFF as a whole GameObject while the player is " +
-                 "standing here, which takes its renderer, its collider and its " +
-                 "TeleportationAnchor with it in one move - so it is neither a pillar in your " +
-                 "face while you dance, nor a teleport target for a stage you are already " +
-                 "standing on. Put the TeleportationAnchor on THIS object rather than the " +
-                 "parent: that is what lets one SetActive do all three jobs, and it keeps XRI " +
-                 "out of this script.")]
-        [SerializeField] GameObject beacon;
 
         [Header("Screen")]
         [Tooltip("Resize the screen to the video's own aspect ratio, fitted inside the size it " +
@@ -134,10 +129,6 @@ namespace RHCommunityHack.Play
             IsOccupied = occupied;
 
             if (panel != null) panel.SetActive(occupied);
-
-            // Hidden the moment the stage is taken - which is also before the player can walk
-            // into it, since occupancy starts several metres out.
-            if (beacon != null) beacon.SetActive(!occupied);
 
             if (dancers != null)
             {
