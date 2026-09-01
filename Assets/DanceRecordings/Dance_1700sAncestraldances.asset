@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 503df9f37118794469c34d4289d052d2, type: 3}
+  m_Name: Dance_1700sAncestraldances
+  m_EditorClassIdentifier: Assembly-CSharp::RHCommunityHack.DanceCapture.DanceRecording
+  label: Ancestral dances - Africa, 1700s slavery, 1900s sharecroppers (script p.135).
+    NO CONTENT YET.
+  capturedDuration: 0
+  averageSampleRate: 0
+  samples: []
+  music: {fileID: 0}
+  video: {fileID: 0}
+  characterAnimation: {fileID: 0}
+  poster: {fileID: 0}
+  chromaKey: 1
+  keyColor: {r: 0.05, g: 0.75, b: 0.12, a: 1}
+  keyThreshold: 0.12
+  keySmoothness: 0.06
+  spillRemoval: 0.7
+  domeMaterial: {fileID: 0}
+  domeColor: {r: 0.42, g: 0.08, b: 0.12, a: 1}
+  inPoint: 0
+  outPoint: 0

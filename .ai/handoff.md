@@ -327,6 +327,39 @@ Decisions: [decisions/beats-from-recorded-motion.md](decisions/beats-from-record
 - Verified by switching four times in play mode: no leftover beats, particles or line points at
   any transition. **Not tried in a headset.**
 
+## Six stages on a zigzag timeline (2026-09-01)
+
+The stages are laid out as a **zigzag line in date order**, not the old equilateral triangle.
+That divergence had been sitting open in the script mapping doc: the script wants a line you
+walk forward through history, and it is explicit about the shape - "we are standing at the start
+of a ZIGZAG TIMELINE that stretches out from our feet, marked with many years" (p.115).
+
+Six stages, X alternating 0/36, Z stepping 42, so **55.32m apart** and 210m end to end. Each one
+faces the direction you arrive from, so the screen is ahead as you keep walking. A 2m white
+`LineRenderer` (`Stage Timeline`, driven by `StageTimeline`) runs through all six with a 24m
+lead-in and lead-out; it follows the stages in edit mode, so re-shaping the path is dragging a
+dome. The ground `Plane` was enlarged to match - it used to end under the third stage.
+
+**Three of the six takes are empty placeholders**: `Dance_1700sAncestraldances`,
+`Dance_1964Dancinginthestreet`, `Dance_2024Mitancestors`. No samples, video or animation. Walking
+in gives a coloured dome, a panel and three motionless dancers, plus a
+`[DancePlayer] No recording assigned` warning - that warning is the honest signal that content is
+missing, not a bug. Each one's `label` says which script page it needs footage from.
+
+> ⚠️ **If the white line ever goes invisible, check `_Cull` on StageTimeline.mat first.** With
+> TransformZ alignment the ribbon's front face points DOWN, so a normally back-face-culled
+> material draws nothing from any angle, while the component still reports the right point count,
+> width and bounds and the console stays clean. Every wrong theory looks identical. The first
+> theory here was depth fighting against the ground; raising the line to 0.6m produced a
+> byte-identical screenshot, which is what ruled it out.
+
+> ⚠️ **18 skinned dancers now exist in the scene** (6 stages x 3), up from 9. Only 3 animate at a
+> time - vacated stages switch their whole group off - but instantiation and memory are six-fold
+> and have never been measured on a headset.
+
+> 🔴 Travel is still missing (see below) and v4 makes it worse: the gap between stages went from
+> 24m to 55.3m, past the 34.4m a Velocity-18 teleport arc could reach even if it were restored.
+
 ## Dance stages are one prefab (2026-09-01)
 
 `Assets/Prefabs/DanceStage.prefab`. **Adding a stage is: drag it in, move it, change the
@@ -522,7 +555,9 @@ Load-bearing points:
   the property that made the prefab worth having
 - **Assuming you can still teleport between stages.** You cannot, since 2026-09-01 - the
   ray fires and lands nowhere, which reads as a broken controller rather than as a missing
-  feature
-- **The three stages are laid out as an equilateral triangle, but the script wants a
-  timeline** — a line, in date order, where teleporting means moving forward through
-  history rather than picking a song. Undecided; noted in the mapping doc §5
+  feature. The stages are now 55.3m apart, so thumbstick is a minute-plus walk
+- **Reading a `[DancePlayer] No recording assigned` warning as a fault.** Three of the six
+  stages are deliberate empty placeholders for script beats with no footage yet
+- ~~The three stages are laid out as an equilateral triangle, but the script wants a
+  timeline~~ — **resolved 2026-09-01**: six stages on a zigzag line in date order, per the
+  script. See the timeline section above and the mapping doc §5
