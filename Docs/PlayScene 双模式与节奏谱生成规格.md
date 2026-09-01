@@ -181,16 +181,50 @@ beat 模式重锚时**会先销毁在场的球**——它们是按旧参考系�
 
 ## 6. 舞台角色：一条 clip 驱动三个人
 
-场景里站着三个 `LaunchPad_Compassion_Dance_test` 实例，由 `DanceCharacterDirector`（挂在 `Dance Characters` 上）统一驱动。
+**每处舞台**站着三个 `SuperFusionAncestor (1)` 实例，由该舞台的 `DanceCharacterDirector`（挂在 `Stage N/Dancers` 上）统一驱动。三处共 9 个，但同时只有被占用的那一处在跑（见 Dance Place 规格 §2）。
 
 | | |
 |---|---|
+| 模型 | `SuperFusionAncestor (1)`，66,303 顶点 / 1 个 SkinnedMesh |
 | clip 来源 | `DanceRecording.characterAnimation`，由 `PlayModeController` 推下来 |
 | clip 长度 | 29.93 s / 30 fps |
 | 站位 | `(-2.4, 0, 2.2)`、`(2.4, 0, 2.2)`、`(0, 0, 1.8)`，面朝玩家 |
-| 尺寸 | 身高 1.788 m，scale 1，脚在 y=0 |
+| 尺寸 | 模型原高 1.091 m，**scale ×1.639** → 1.788 m |
 
-**不需要 AnimatorController。** FBX 导入后带的是一个空控制器的 `Animator`，中控用 Playables 图把 clip 直接喂进去。所以加第 4、第 5 个舞者只是往数组里多拖一个引用。
+**不需要 AnimatorController。** 中控用 Playables 图把 clip 直接喂进 `Animator`。所以加第 4、第 5 个舞者只是往数组里多拖一个引用。
+
+### 6.0 ⚠️ 模型和 clip 不同源，靠 Humanoid 重定向
+
+clip 来自 `LaunchPad_Compassion_Dance_test`，模型是 `SuperFusionAncestor (1)`——**两套骨架毫无关系**：
+
+| | clip 来源 | 模型 |
+|---|---|---|
+| 根链 | `Newton/Root/Hips` | `mixamorig:Hips` |
+| 腿 | `LeftThigh / LeftShin` | `mixamorig:LeftUpLeg / LeftLeg` |
+| 脊椎 | Spine1→2→3→4（4 节） | Spine→Spine1→Spine2（3 节） |
+| 骨骼数 | 79 | 67 |
+
+> **所以两边的 FBX 都必须是 `Animation Type = Humanoid`，而且场景里每个 `Animator` 都必须挂上模型的 Avatar。**
+
+Generic clip 是**按骨骼路径名**绑定的，光是 `mixamorig:` 前缀就让所有路径失配，一根骨头都绑不上。转成 Humanoid 后 clip 变成肌肉空间的（`clip.humanMotion == True`），才与具体骨架无关。
+
+⚠️ **这三件事错了都不报错，人就是站着不动**——和 §6.1 的共享 playable、以及 take 重复赋值是同一类静默失败：
+
+1. 任一侧 FBX 忘了设 Humanoid
+2. `Animator.avatar` 忘了挂
+3. 换了模型但没重连 `DanceCharacterDirector.dancers`
+
+排查时先看 `Animator.isHuman` 和 `clip.humanMotion`，两个都必须是 `True`。
+
+### 6.0b 贴图是内嵌在 FBX 里的，要手动提取
+
+模型进来是纯白的，**不是漏配材质，是贴图还锁在 FBX 里**。Unity 在你手动提取之前不会把内嵌媒体暴露成子资产——所以"查子资产列表发现没有贴图"证明不了贴图不存在。
+
+选中 FBX → Inspector → **Materials** 标签 → **Extract Textures** → 存到 `Assets/MotionCaptures/Textures/`。`Color` 和 `Normal` 会自动接上。
+
+提取后还要修两处导入设置：`Normal.png` 要改成 **NormalMap** 类型；metallic / roughness 要**关掉 sRGB**（它们是数据不是颜色，走 gamma 解码会错）。
+
+> **metallic / roughness 目前刻意没接。** URP 的 `_MetallicGlossMap` 要求金属度在 R、光滑度在 A **同一张图**里；Tripo 导出的是两张独立贴图，而且给的是 roughness（smoothness 的反值）。直接把 metallic 那张拖上去，它不透明的 alpha 会被当成 smoothness=1，整个角色变镜面。要接得先做通道打包（metallic → R，1−roughness → A）。在那之前材质是纯哑光。
 
 ### 6.1 ⚠️ 三个人必须各自持有一个 playable
 
