@@ -372,10 +372,14 @@ no longer needs alpha clipping and a surface that large defeats early-Z when alp
 > child of the dome, so deactivating the object would take the floor, its MeshCollider and the
 > ground under the player with it.
 
+> **The line runs UNDER each stage's floor**, so it shows on the open ground between stages and is
+> hidden by the disc when it reaches one - which makes the discs read as stations along it. Stack
+> above the stage root: ground 0, line +0.005, dome floor +0.01, standing marker +0.02.
+>
 > ⚠️ **`StageTimeline.height` is relative to each stop, not a world y.** It was briefly absolute;
 > the scene was then raised to y=0.1 and the line ended up 85mm under the ground, invisible, with
-> nothing to say why. The stack it lives in is only a centimetre deep - floor +0.01, line +0.015,
-> standing marker +0.02 above the stage root.
+> nothing to say why. There is only 5mm either side of it now - anything above +0.01 and the line
+> climbs back on top of the floor.
 
 Object-space procedural noise, no texture - a dissolve map on an equirectangular sphere pinches at the poles, which is exactly where
 a dome is most visible from inside. It samples `_BaseMap` even though the domes are flat colour,

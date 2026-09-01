@@ -39,12 +39,15 @@ namespace RHCommunityHack.Environment
 
         [Tooltip("Height ABOVE EACH STAGE, not above world zero. Relative because an absolute " +
                  "height silently buries the line the moment anything moves vertically: the scene " +
-                 "was raised to y=0.1 and a line pinned at 0.015 ended up 85mm under the ground, " +
-                 "invisible, with nothing to indicate why. " +
-                 "The stack it has to fit into is one centimetre deep. Relative to the stage: " +
-                 "dome floor +0.01, THIS +0.015, standing marker +0.02 - so the floor is under " +
-                 "the line and the marker reads on top of it.")]
-        [SerializeField] float height = 0.015f;
+                 "was raised to y=0.1 and a line pinned at an absolute 0.015 ended up 85mm under " +
+                 "the ground, invisible, with nothing to indicate why. " +
+                 "It sits BETWEEN the ground and the dome floor, deliberately: the line runs " +
+                 "UNDER each stage's floor, so it shows on the open ground between stages and is " +
+                 "hidden by the disc when it reaches one. Relative to the stage root: ground 0, " +
+                 "THIS +0.005, dome floor +0.01, standing marker +0.02. Five millimetres either " +
+                 "side is all the room there is - anything above +0.01 puts the line back on top " +
+                 "of the floor.")]
+        [SerializeField] float height = 0.005f;
 
         [Tooltip("Metres of line before the first stop and after the last, so the timeline reads " +
                  "as continuing rather than beginning and ending at a dome.")]
