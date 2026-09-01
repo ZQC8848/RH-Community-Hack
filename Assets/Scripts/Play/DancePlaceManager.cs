@@ -1,5 +1,5 @@
+using System.Collections.Generic;
 using UnityEngine;
-using RHCommunityHack.DanceCapture;
 
 namespace RHCommunityHack.Play
 {
@@ -11,6 +11,11 @@ namespace RHCommunityHack.Play
     // distance comparisons a frame avoid all of that, make the hysteresis explicit, and show up
     // in the inspector as gizmos.
     //
+    // Stages are FOUND, not listed. They are prefab instances now, and a list here would be one
+    // more thing to remember when a fourth is dropped in - the failure being silent, since a
+    // stage missing from the list simply never activates. Fill the array only to restrict the
+    // scene to a subset.
+    //
     // MUST live on an object the stages never deactivate - same hard constraint as
     // PlayModeController, and for the same reason: a component that switches off its own object
     // can never switch itself back on.
@@ -21,24 +26,50 @@ namespace RHCommunityHack.Play
                  "inside their play space, and it is where they actually are that matters.")]
         [SerializeField] Transform head;
 
+        [Tooltip("Leave EMPTY. Every DancePlace in the scene is found at load, so dropping in " +
+                 "another stage prefab needs no wiring. Fill it only to deliberately ignore " +
+                 "some of the stages that are present.")]
         [SerializeField] DancePlace[] places = new DancePlace[0];
 
         [SerializeField] PlayModeController controller;
         [SerializeField] PlayModeUI ui;
 
-        [Tooltip("The scene's single VideoPlayer, borrowed by whichever stage is occupied.")]
-        [SerializeField] DanceVideoScreen videoScreen;
+        readonly List<DancePlace> active = new List<DancePlace>();
 
         public DancePlace Current { get; private set; }
         public bool OnStage => Current != null;
+        public IReadOnlyList<DancePlace> Places => active;
 
         void Start()
         {
-            foreach (var place in places)
-                if (place != null) place.SetOccupied(false);
+            Collect();
+
+            foreach (var place in active) place.SetOccupied(false);
 
             if (ui != null) ui.SetTarget(null);
             if (controller != null) controller.LeaveStage();
+        }
+
+        void Collect()
+        {
+            active.Clear();
+
+            if (places != null && places.Length > 0)
+            {
+                foreach (var place in places)
+                    if (place != null) active.Add(place);
+                return;
+            }
+
+            // Include inactive: a stage's own root stays active, but finding them this way also
+            // survives someone parenting the stages under a group that starts switched off.
+            foreach (var place in FindObjectsByType<DancePlace>(FindObjectsInactive.Include,
+                                                               FindObjectsSortMode.None))
+                active.Add(place);
+
+            if (active.Count == 0)
+                Debug.LogWarning("[DancePlaceManager] No DancePlace in the scene - there is " +
+                                 "nowhere to dance. Drag in Assets/Prefabs/DanceStage.prefab.", this);
         }
 
         void Update()
@@ -48,10 +79,10 @@ namespace RHCommunityHack.Play
             DancePlace next = Resolve(head.position);
             if (next != Current) Switch(next);
 
-            // Re-asked every frame, not once on arrival: the decoder needs about 1.7s to produce
-            // a first picture, and the poster has to stay up for exactly that long. Hiding it any
-            // earlier is the black rectangle this design exists to avoid.
-            if (Current != null) Current.ShowLive(LiveTextureFor(Current));
+            // Re-asked every frame, not once on arrival: the decoder needs a second or two to
+            // produce a first picture, and the poster has to stay up for exactly that long.
+            // Hiding it any earlier is the black rectangle this design exists to avoid.
+            if (Current != null) Current.ShowLive(Current.LiveTexture);
         }
 
         DancePlace Resolve(Vector3 headPosition)
@@ -65,7 +96,7 @@ namespace RHCommunityHack.Play
 
             DancePlace best = null;
             float bestSqr = float.MaxValue;
-            foreach (var place in places)
+            foreach (var place in active)
             {
                 if (place == null) continue;
                 float sqr = place.SqrDistanceTo(headPosition);
@@ -94,14 +125,7 @@ namespace RHCommunityHack.Play
 
             Current.SetOccupied(true);
             if (ui != null) ui.SetTarget(Current.StatusText);
-            if (controller != null)
-                controller.EnterStage(Current.Take, Current.StandingAnchor, Current.Dancers);
-        }
-
-        Texture LiveTextureFor(DancePlace place)
-        {
-            if (videoScreen == null || place.Take == null || place.Take.video == null) return null;
-            return videoScreen.IsReadyFor(place.Take.video) ? videoScreen.OutputTexture : null;
+            if (controller != null) controller.EnterStage(Current);
         }
     }
 }

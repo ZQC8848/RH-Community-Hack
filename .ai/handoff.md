@@ -1,6 +1,6 @@
 # Current state
 
-**Last updated: 2026-08-31**
+**Last updated: 2026-09-01**
 
 ## Read this before renaming anything
 
@@ -327,6 +327,44 @@ Decisions: [decisions/beats-from-recorded-motion.md](decisions/beats-from-record
 - Verified by switching four times in play mode: no leftover beats, particles or line points at
   any transition. **Not tried in a headset.**
 
+## Dance stages are one prefab (2026-09-01)
+
+`Assets/Prefabs/DanceStage.prefab`. **Adding a stage is: drag it in, move it, change the
+`take`.** Nothing else - `DancePlaceManager` finds every `DancePlace` in the scene at
+`Start()`, so there is no list to remember to update (forgetting would have failed silently:
+the stage would simply never activate).
+
+Measured after the conversion: `Stage 2` and `Stage 3` each carry **exactly one component
+override against the prefab - `DancePlace.take`**. `Stage 1` is the prefab source and has none.
+**Treat that as the invariant.** Anything you find yourself hand-editing on one instance
+belongs on `DanceRecording` instead, or the three stages start drifting apart and the prefab
+was pointless.
+
+What moved onto `DanceRecording` to make that true: `poster`, the five chroma-key settings, and
+`domeMaterial` / `domeColor`. They are properties of the footage and of the era, not of the
+room. A separate "stage profile" asset was rejected - it would restore the two-assignment-points
+problem that moving the take onto `DancePlace` was meant to end.
+
+Each stage now owns:
+
+- **its own dome and floor** - `ImmersiveSphere` R=8 with a `ImmersiveFloor` disc at the
+  equator, centre 1cm up so the floor sits above the ground `Plane` and below the standing
+  marker. **The dome has no collider on purpose**: one would put a wall in front of every
+  cross-stage teleport arc. Verified - a ray from Stage 1's hand height to Stage 2's beacon
+  hits exactly one collider, the beacon, at 23.71m.
+- **its own `VideoPlayer`**. This is the change with a real payoff: a stage you have already
+  visited stays *paused* rather than being torn down, so walking back onto it has a picture on
+  the next frame. The single shared player could never do that - its clip changed on every
+  switch, and a clip change is a fresh warm-up. Verified: Stage 1 -> Stage 2 -> Stage 1, and
+  `LiveTexture` was non-null on arrival.
+- **its own RenderTexture**, allocated lazily by `DanceVideoScreen` at the clip's own size
+  whenever `targetTexture` is left empty. **Prefab instances must never share a RenderTexture
+  asset** - three decoders would write the same pixels and you would see whichever wrote last.
+  Verified: three distinct instance IDs, and the never-visited stage had allocated none.
+  The capture scene assigns its RT explicitly and is unaffected.
+
+Spec: Docs/Dance Place 三处舞台与就位判定规格.md, sections 2.1, 6.0 and 8.5.
+
 ## Guide orbs (2026-08-29) - built, NOT yet tried in a headset
 
 Two orbs travel a recorded take, trailing particles; reaching a controller into one makes
@@ -462,6 +500,11 @@ Load-bearing points:
 - **Adding a video without setting the importer to transcode to VP8.** H.264 goes
   through the OS decoder, which takes ~55s to produce a first picture on this machine
   and reports no error at all. It has already caught this project three times
+- **Sharing a RenderTexture asset between stage prefab instances.** Silent: all three
+  decoders write the same pixels, and you see whichever wrote last. Leave `targetTexture`
+  empty and let `DanceVideoScreen` allocate one per instance
+- **Hand-editing anything but `take` on a stage instance.** It works, and it quietly ends
+  the property that made the prefab worth having
 - **The three stages are laid out as an equilateral triangle, but the script wants a
   timeline** — a line, in date order, where teleporting means moving forward through
   history rather than picking a song. Undecided; noted in the mapping doc §5

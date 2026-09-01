@@ -55,6 +55,12 @@ namespace RHCommunityHack.DanceCapture
         // the capture scene does. Runtime only - a stage supplies it, it is never authored here.
         public Transform AnchorFacing { get; set; }
 
+        // The screen this player cues. Set by whoever owns the stage: in PlayScene each stage
+        // decodes its own video, so the right screen is a runtime fact, not an authored one.
+        // Null falls back to the serialized videoPlayer below, which is how the capture scene -
+        // one screen, no stages - carries on unchanged.
+        public DanceVideoScreen Screen { get; set; }
+
         public bool IsPlaying { get; private set; }
         public DanceRecording Recording => recording;
         public float PlayheadSeconds { get; private set; }
@@ -108,10 +114,16 @@ namespace RHCommunityHack.DanceCapture
 
         DanceVideoScreen EnsureScreen()
         {
-            if (videoPlayer == null || recording == null || recording.video == null) return null;
+            if (recording == null || recording.video == null) return null;
+            if (Screen != null) return Screen;
+            if (videoPlayer == null) return null;
             if (screen == null) screen = DanceVideoScreen.For(videoPlayer);
             return screen;
         }
+
+        // Whatever was last being driven, take or no take - so a take with no video still parks
+        // the picture that the previous one left running.
+        DanceVideoScreen CurrentScreen => Screen != null ? Screen : screen;
 
         public void LoadRecording(DanceRecording next)
         {
@@ -210,9 +222,9 @@ namespace RHCommunityHack.DanceCapture
                 if (restartVideo) videoScreen.CueTo(recording.inPoint);
                 videoStartPending = true;
             }
-            else if (screen != null)
+            else if (CurrentScreen != null)
             {
-                screen.Park();
+                CurrentScreen.Park();
             }
 
             OnPassStarted?.Invoke();

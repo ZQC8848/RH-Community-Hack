@@ -19,10 +19,6 @@ namespace RHCommunityHack.Play
     {
         public enum Mode { Beat, Guide }
 
-        [Tooltip("The one VideoPlayer in the scene. Every stage borrows it in turn; the stages " +
-                 "themselves only own a quad and a poster.")]
-        [SerializeField] DanceVideoScreen videoScreen;
-
         [Header("Beat mode")]
         [SerializeField] GameObject beatRoot;
         [SerializeField] BeatSpawner spawner;
@@ -60,6 +56,9 @@ namespace RHCommunityHack.Play
         // and the mode toggle does nothing until they step onto one.
         public bool IsOnStage { get; private set; }
 
+        // The stage the player is standing on. It carries the take, the facing, the dancers and
+        // the video, so there is one thing to hold rather than four that could drift apart.
+        DancePlace place;
         DanceRecording take;
         DanceCharacterDirector characters;
 
@@ -115,16 +114,25 @@ namespace RHCommunityHack.Play
             LeaveStage();   // nothing is running until a stage says so
         }
 
-        // Called by DancePlaceManager when the player steps onto a stage. Everything the stage
-        // knows arrives in one call, so there is no window where the take and the facing disagree.
-        public void EnterStage(DanceRecording stageTake, Transform facing, DanceCharacterDirector stageDancers)
+        // Called by DancePlaceManager when the player steps onto a stage. The whole stage
+        // arrives in one call, so there is no window where the take and the facing disagree.
+        public void EnterStage(DancePlace stage)
         {
-            take = stageTake;
-            characters = stageDancers;
+            place = stage;
+            take = stage != null ? stage.Take : null;
+            characters = stage != null ? stage.Dancers : null;
+            Transform facing = stage != null ? stage.StandingAnchor : null;
 
             // Both must face the same way or the orbs and the chart end up in different
             // coordinate frames on the same stage.
-            if (player != null) player.AnchorFacing = facing;
+            if (player != null)
+            {
+                player.AnchorFacing = facing;
+                // Guide mode cues the video per pass, so DancePlayer has to be pointed at THIS
+                // stage's decoder. Each stage owns one now, and a DancePlayer left pointing at
+                // the previous stage would seek a screen nobody is looking at.
+                player.Screen = stage != null ? stage.VideoScreen : null;
+            }
             if (beatSource != null) beatSource.AnchorFacing = facing;
 
             IsOnStage = true;
@@ -143,11 +151,19 @@ namespace RHCommunityHack.Play
                 if (volume != null) volume.SetActive(false);
 
             if (characters != null) characters.SetRecording(null);
-            if (videoScreen != null) videoScreen.Park();
 
+            // Park, never Stop - the stage keeps its decoder warm so walking back onto it
+            // resumes on the next frame instead of paying the warm-up again.
+            if (place != null) place.ParkVideo();
+
+            place = null;
             take = null;
             characters = null;
-            if (player != null) player.AnchorFacing = null;
+            if (player != null)
+            {
+                player.AnchorFacing = null;
+                player.Screen = null;
+            }
             if (beatSource != null) beatSource.AnchorFacing = null;
         }
 
@@ -203,13 +219,7 @@ namespace RHCommunityHack.Play
         // rectangle of whatever the RenderTexture last held.
         void ApplyVideo(bool beat)
         {
-            if (videoScreen == null) return;
-
-            var clip = take != null ? take.video : null;
-            if (clip == null) return;
-
-            if (beat) videoScreen.PlayFreely(clip);
-            else videoScreen.WarmUp(clip);
+            if (place != null) place.PlayVideo(beat);
         }
 
         public void Toggle()

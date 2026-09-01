@@ -10717,5 +10717,13 @@ MonoBehaviour:
   music: {fileID: 0}
   video: {fileID: 32900000, guid: 4c6aab1641d6f1349b1dd404e84e9424, type: 3}
   characterAnimation: {fileID: -4671056281497532287, guid: ca24152a060f39046916d4f43f066989, type: 3}
+  poster: {fileID: 0}
+  chromaKey: 1
+  keyColor: {r: 0.05, g: 0.75, b: 0.12, a: 1}
+  keyThreshold: 0.12
+  keySmoothness: 0.06
+  spillRemoval: 0.7
+  domeMaterial: {fileID: 0}
+  domeColor: {r: 0.3, g: 0.14, b: 0.44, a: 1}
   inPoint: 0
   outPoint: 0

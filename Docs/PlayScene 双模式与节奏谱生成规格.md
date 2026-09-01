@@ -79,8 +79,10 @@ Guide Mode               分组根，随模式 SetActive
 
 | 模式 | 谁驱动 | 行为 |
 |---|---|---|
-| Beat | `PlayModeController.ApplyVideo()` → `PlayFreely()` | 没有要对齐的东西，直接放 |
+| Beat | `PlayModeController.ApplyVideo()` → `DancePlace.PlayVideo(true)` → `PlayFreely()` | 没有要对齐的东西，直接放 |
 | Guide | `DancePlayer` | 每遍开头 `CueTo(inPoint)`，跟 take 对拍 |
+
+> **2026-09-01：播放器现在归舞台所有，每处一个。** `PlayModeController` 不再持有 `DanceVideoScreen`，改为把命令转给当前舞台；进场时顺便把该舞台的 screen 推给 `DancePlayer`（`player.Screen`）——否则 guide 模式会去 seek 上一处舞台的解码器。理由见 "Dance Place 规格" §6.0。
 
 **take 没挂视频 → 整块屏幕的 Renderer 关掉**，而不是留一块黑板。RenderTexture 没人写的时候保留的是上一次的内容，正是这一点让"没配视频"长期看起来像"渲染器坏了"。
 

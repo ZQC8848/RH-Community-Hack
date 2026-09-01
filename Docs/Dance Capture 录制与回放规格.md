@@ -169,6 +169,8 @@ t+20→28s            time 1.80 → 3.80 → 5.80 → 7.80 → 9.80   完全实�
 
 `DanceRecording.characterAnimation` 挂一条 `AnimationClip`，是同一段表演的**骨骼版本**，用来驱动场景里的舞者模型。留空就没有舞者动作，其余一切照常。
 
+> **2026-09-01：`DanceRecording` 上多了一段 "Stage presentation"**（`poster`、抠像五项、`domeMaterial` / `domeColor`）。那些字段跟录制无关，录制器不写也不读它们——放在这里是因为 PlayScene 的舞台是 prefab，**一个 take 就是一处舞台的全部差异**。见 "Dance Place 三处舞台与就位判定规格" §2.1。
+
 它和 `samples`（手柄轨迹）是**两套独立的数据**，不要当成一件东西：
 
 | | 来源 | 驱动什么 | 参考系 |

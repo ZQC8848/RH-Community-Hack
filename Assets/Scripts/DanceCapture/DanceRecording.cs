@@ -35,6 +35,58 @@ namespace RHCommunityHack.DanceCapture
                  "the dancers then simply stand in their bind pose.")]
         public AnimationClip characterAnimation;
 
+        [Header("Stage presentation")]
+        // Everything below is how this take LOOKS on a stage, rather than what was captured.
+        //
+        // It lives here, in the capture asset, so that a stage prefab has exactly ONE field to
+        // change. Give a stage a different DanceRecording and its video, music, character
+        // animation, poster, keying and dome colour all change together - which is the whole
+        // point of the stage being a prefab. A second "stage profile" asset would restore the
+        // two-assignment-points problem that moving the take onto DancePlace was meant to end.
+        //
+        // The keying settings in particular belong to the footage, not to the room: they are
+        // properties of how that shoot was lit, and they travel with it.
+
+        [Tooltip("Shown on the stage screen whenever this take is not playing live - while " +
+                 "nobody is standing there, and during the seconds the decoder takes to " +
+                 "produce a first picture. Null leaves the screen hidden instead, which is " +
+                 "better than a rectangle of whatever the RenderTexture last held.")]
+        public Texture poster;
+
+        [Tooltip("Key the green screen out of this take's video. Off leaves the footage as it " +
+                 "is, which is what a video already keyed to alpha wants.")]
+        public bool chromaKey = true;
+
+        [Tooltip("The backdrop colour to remove. Sample it from an actual frame rather than " +
+                 "guessing pure green - lit cloth is never 0,255,0.")]
+        public Color keyColor = new Color(0.05f, 0.75f, 0.12f, 1f);
+
+        [Tooltip("Chroma distance below which a pixel is fully removed. Raise it until the " +
+                 "backdrop is gone; too high starts eating the subject. Measured on this " +
+                 "project's own footage: backdrop 0.00-0.02, subject 0.21-0.23, and a grey " +
+                 "floor at 0.166 - so 0.03-0.15 is the usable band.")]
+        [Range(0f, 0.5f)] public float keyThreshold = 0.12f;
+
+        [Tooltip("Width of the fade from keyed to kept. Wider softens hair and motion blur; " +
+                 "narrower cuts harder.")]
+        [Range(0.001f, 0.3f)] public float keySmoothness = 0.06f;
+
+        [Tooltip("Pulls green bounce back out of the pixels that survive, which is what stops " +
+                 "the subject wearing a green rim.")]
+        [Range(0f, 1f)] public float spillRemoval = 0.7f;
+
+        [Tooltip("Overrides the dome material on a stage showing this take. Null keeps whatever " +
+                 "the stage prefab was built with, recoloured by domeColor below - which is usually " +
+                 "enough to tell three eras apart without authoring three materials.")]
+        public Material domeMaterial;
+
+        [Tooltip("The colour of the stage's dome. This REPLACES the material's own colour rather " +
+                 "than tinting it, because the domes have to reach warm and violet from a blue " +
+                 "base and a multiply cannot do that. The default is ImmersiveSphere.mat's own " +
+                 "blue, so a take that never touches this looks exactly like the prefab - if " +
+                 "you restyle that material, change this default to match.")]
+        public Color domeColor = new Color(0.15f, 0.35f, 0.55f);
+
         [Header("Trim (non-destructive)")]
         [Min(0f)] public float inPoint;
         [Tooltip("End of the trimmed range. Zero or less means 'play to the end of the capture'.")]

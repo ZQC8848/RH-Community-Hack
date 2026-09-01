@@ -2,6 +2,15 @@
 
 **2026-08-28 ・ status: DECIDED, amended 2026-08-29 ・ scope: the video shown during recording and review, not audio and not the motion capture itself**
 
+> **2026-09-01 amendment.** There is no longer one `VideoPlayer` in PlayScene: **each dance
+> stage owns one**, and `DanceVideoScreen` allocates its own RenderTexture (sized to the clip)
+> whenever `targetTexture` is left empty. The never-`Stop()` rule below is unchanged and is what
+> makes this pay off - a stage you have already visited is *paused*, not torn down, so walking
+> back onto it has a picture on the next frame. The single shared player could never get that,
+> because its clip changed on every switch and a clip change *is* a fresh warm-up. Prefab
+> instances must never share a RenderTexture asset: three decoders would write the same pixels.
+> See the Dance Place spec, section 6.0.
+
 > **2026-08-29 amendment.** The startup cost is not a fixed property of `VideoPlayer` - it is the
 > OS H.264 decode path. Setting the importer to **transcode to VP8** took the first picture from
 > 55.65s to **1.76s** on the same machine. `DanceVideoScreen` and its never-`Stop()` rule stay

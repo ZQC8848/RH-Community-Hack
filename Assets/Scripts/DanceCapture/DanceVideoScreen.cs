@@ -32,6 +32,7 @@ namespace RHCommunityHack.DanceCapture
 
         VideoPlayer vp;
         Renderer screenRenderer;
+        RenderTexture owned;
         Phase phase = Phase.Empty;
         VideoClip current;
         bool resumeAfterSeek;
@@ -94,6 +95,7 @@ namespace RHCommunityHack.DanceCapture
 
             current = clip;
             vp.clip = clip;
+            EnsureTargetTexture(clip);
             vp.seekCompleted -= HandleSeekCompleted;
             phase = Phase.Warming;
             warmStartedAt = UnityEngine.Time.realtimeSinceStartup;
@@ -103,6 +105,66 @@ namespace RHCommunityHack.DanceCapture
             // produce pictures. We pause again the moment the first one lands.
             vp.Prepare();
             vp.Play();
+        }
+
+        // Gives this player a RenderTexture of its very own, sized to the clip.
+        //
+        // Only when none was assigned in the inspector. That distinction is what lets one
+        // component serve both cases: the capture scene points its quad at a RenderTexture
+        // ASSET and keeps it, while a stage prefab leaves the field empty - and must, because
+        // three prefab instances sharing one asset would all decode into the same pixels and
+        // show whichever stage wrote last.
+        //
+        // Sized from the clip rather than fixed, so portrait footage is not resampled through a
+        // landscape buffer before it ever reaches the screen.
+        void EnsureTargetTexture(VideoClip clip)
+        {
+            if (vp.renderMode != VideoRenderMode.RenderTexture) return;
+            if (vp.targetTexture != null && vp.targetTexture != owned) return;   // authored: leave it
+
+            int w = (int)clip.width;
+            int h = (int)clip.height;
+            if (w <= 0 || h <= 0) return;
+
+            if (owned != null && owned.width == w && owned.height == h)
+            {
+                vp.targetTexture = owned;
+                return;
+            }
+
+            ReleaseOwned();
+            owned = new RenderTexture(w, h, 0, RenderTextureFormat.ARGB32)
+            {
+                name = "VideoRT (" + name + ")",
+                wrapMode = TextureWrapMode.Clamp,
+            };
+            owned.Create();
+            vp.targetTexture = owned;
+        }
+
+        void ReleaseOwned()
+        {
+            if (owned == null) return;
+            if (vp != null && vp.targetTexture == owned) vp.targetTexture = null;
+            owned.Release();
+            Destroy(owned);
+            owned = null;
+        }
+
+        // A RenderTexture is not garbage collected - without this each stage leaks one buffer
+        // the size of its video every time the scene is torn down.
+        void OnDestroy() => ReleaseOwned();
+
+        // Width over height of whatever is currently loaded, or 0 when nothing is. Stages use it
+        // to size their screen to the footage instead of stretching portrait video across a
+        // landscape quad.
+        public float ClipAspect
+        {
+            get
+            {
+                if (current == null || current.height == 0) return 0f;
+                return (float)current.width / current.height;
+            }
         }
 
         public bool IsReadyFor(VideoClip clip) => clip != null && clip == current && IsReady;
