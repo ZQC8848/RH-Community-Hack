@@ -336,9 +336,19 @@ of a ZIGZAG TIMELINE that stretches out from our feet, marked with many years" (
 
 Six stages, X alternating 0/36, Z stepping 42, so **55.32m apart** and 210m end to end. Each one
 faces the direction you arrive from, so the screen is ahead as you keep walking. A 2m white
-`LineRenderer` (`Stage Timeline`, driven by `StageTimeline`) runs through all six with a 24m
-lead-in and lead-out; it follows the stages in edit mode, so re-shaping the path is dragging a
-dome. The ground `Plane` was enlarged to match - it used to end under the third stage.
+`LineRenderer` (`Stage Timeline`, driven by `StageTimeline`) runs through all six, with **three
+extra folds inserted between each pair** (9m to alternating sides) so the path zigzags on its way
+rather than running dead straight between domes, plus a 24m lead-in and lead-out. 23 points in
+all. It follows the stages in edit mode, so re-shaping the path is dragging a dome. The ground
+`Plane` was enlarged to match - it used to end under the third stage.
+
+**The dancers are switched on and off by distance, not by occupancy** - 20m with 3m of
+hysteresis, against a 6m enter radius. Tying them to occupancy made them appear at the same
+instant the panel did, which reads as a pop; now you watch them from outside the dome and then
+walk in. Running cost is unchanged: at 55m spacing at most one stage is ever in range, so it is
+still three dancers. `PlayModeController` lost its `characters` field entirely - dancers are
+`DancePlace`'s business and were never mode-specific. Verified at 15.1m from a stage: dancers
+active and driving with the playhead advancing, panel off, stage not occupied.
 
 **Three of the six takes are empty placeholders**: `Dance_1700sAncestraldances`,
 `Dance_1964Dancinginthestreet`, `Dance_2024Mitancestors`. No samples, video or animation. Walking
@@ -353,9 +363,17 @@ missing, not a bug. Each one's `label` says which script page it needs footage f
 > theory here was depth fighting against the ground; raising the line to 0.6m produced a
 > byte-identical screenshot, which is what ruled it out.
 
-> ⚠️ **18 skinned dancers now exist in the scene** (6 stages x 3), up from 9. Only 3 animate at a
-> time - vacated stages switch their whole group off - but instantiation and memory are six-fold
-> and have never been measured on a headset.
+> ⚠️ **18 skinned dancers now exist in the scene** (6 stages x 3), up from 9. The distance
+> culling above fixes the *running* half - at most 3 are ever live - but **not the loading half**:
+> all 18 SkinnedMeshRenderers are still instantiated at scene load and hold their memory. Never
+> measured on a headset. The fix if it does not hold up is streaming stages in by distance, not
+> cutting the dancer count.
+
+> ⚠️ **The ground plane's material is `Assets/Materials/test Material.mat`.** It is scruffily
+> named and looks disposable, and it was left out of several commits on exactly that reasoning -
+> wrongly. It is the only thing referencing it, and without it a fresh clone renders the ground
+> pink. Committed 2026-09-01. Worth renaming to something honest, which is safe to do from inside
+> Unity since the reference is by guid.
 
 > 🔴 Travel is still missing (see below) and v4 makes it worse: the gap between stages went from
 > 24m to 55.3m, past the 34.4m a Velocity-18 teleport arc could reach even if it were restored.

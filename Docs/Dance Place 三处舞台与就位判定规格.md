@@ -1,5 +1,5 @@
 ---
-状态: v4（六处舞台排成之字形时间线，编辑器实测，未在头显验证，2026-09-01）
+状态: v5（舞者按距离渲染；白线加密折点，编辑器实测，未在头显验证，2026-09-01）
 日期: 2026-09-01（v1: 2026-08-31）
 关联文档: "PlayScene 双模式与节奏谱生成规格.md"（玩法本体）；"Dance Capture 录制与回放规格.md"（take 数据）
 ---
@@ -73,7 +73,26 @@ X 在 0 / 36 之间交替，Z 每级 +42：
 | **布景**（`DanceStage.prefab`） | ×6 | 穹顶、圆形地板、视频屏 + **自带 VideoPlayer**、舞者 ×3、站位锚点（`Standing Anchor`）、世界面板 |
 | **玩法** | ×1 | `BeatSpawner`、引导球 ×2、combo trail ×2、判定体积、`DancePlayer` |
 
-> ⚠️ **v4 把布景从 3 份变成 6 份，蒙皮角色也就从 9 个变成 18 个。** 同时只有一处激活，所以在跑的仍是 3 个；但**场景加载时要实例化 18 个 SkinnedMeshRenderer**，一体机上的加载时间和内存必须重新量。见 §11.5。
+> ⚠️ **v4 把布景从 3 份变成 6 份，蒙皮角色也就从 9 个变成 18 个。场景加载时 18 个 SkinnedMeshRenderer 都要实例化**，一体机上的加载时间和内存必须重新量。见 §11.5。
+
+### 2.3 舞者按距离渲染（v5）
+
+**舞者的开关脱离了"就位"，改成纯距离。**
+
+| | 半径 | 归谁管 |
+|---|---|---|
+| 舞者渲染 | **20 m**（`dancerRenderRadius`，滞后 +3 m） | `DancePlace.UpdateDancerProximity` |
+| 就位（面板、玩法、视频） | 进 6 m / 出 8 m | `DancePlaceManager.Resolve` |
+
+**为什么渲染半径要比进场半径大。** 绑在就位上的话，舞者会和面板同一瞬间冒出来——六米开外凭空出现三个人，读起来是"弹出"。20 米下你先在穹顶外面看见他们在跳，然后走进去。**运行时代价没变**：舞台间距 55.3 m，中点离两边都是 27.7 m，所以任何时刻至多一处舞台在 20 m 内，还是三个舞者。
+
+关掉的是**整个 GameObject**，所以 `SkinnedMeshRenderer`、`Animator` 和中控的 `PlayableGraph` 一起停，不只是省一个 draw call。
+
+**滞后 3 m 是必须的**：站在边界上会让中控每帧重建一次 playable graph。
+
+> **顺带把所有权理顺了。** 舞者原来由 `PlayModeController` 通过 `SetRecording(take)` / `SetRecording(null)` 驱动，现在完全归 `DancePlace`。`PlayModeController` 上的 `characters` 字段整个删掉了——舞者本来就不分模式，它没有理由知道舞者存在。
+>
+> 附带效果：**走出舞台时舞者不会立刻停**。你回头还能看见他们在跳，直到走出 23 米。这比原来"一转身人就没了"更像回事。
 
 ### 2.1 舞台是一个 prefab，实例之间只差一个 `take`
 
@@ -215,12 +234,26 @@ new DanceReferenceFrame(head.position, place.StandingRotation)
 | 宽度 | **2 m**（`width`，直接写进 `widthMultiplier`） |
 | 高度 | y = **0.015**（`height`） |
 | 材质 | `Assets/Materials/StageTimeline.mat`，URP/Unlit 纯白 |
-| 点 | 六处舞台 + 首尾各 24 m 引线，共 8 个点 |
+| 折点 | 每段舞台之间**再插 3 个**（`foldsPerLeg`），左右各偏 **9 m**（`foldAmplitude`） |
+| 点 | 6 处舞台 + 15 个中间折点 + 首尾引线 = **23 个点** |
 | 拐角 | `numCornerVertices = 6` |
 
 **用 `LineRenderer` 而不是生成 mesh**：之字形的难点全在拐角，`numCornerVertices` 免费解决；而且线是**跟着舞台走的**——`[ExecuteAlways]` 下拖动任何一处舞台，线立刻跟过去，不用重新生成资产。
 
-首尾的引线是顺着第一段/最后一段的方向延长的，所以尾巴仍在之字上，不会拐向别处。
+首尾的引线是顺着第一段/最后一段的方向延长的，所以尾巴仍在之字上，不会拐向别处——注意 v5 之后"第一段"指的是第一个**折点**而不是第一处舞台。
+
+#### 5.2.0 中间折点（v5）
+
+只在舞台处折一次的话，两处舞台之间是 55 米的一条直线，读起来是"连线"而不是"路"。现在每段之间再插 3 个折点，交替向左右偏 9 米：
+
+```
+lead-in ─╮   ╭─╮   ╭─ Stage2 ─╮   ╭─╮   ╭─ Stage3 ...
+      Stage1 ╰─╯   ╰─         ╰─╯   ╰─
+```
+
+**左右的符号是跨段连续计数的**，不是每段从头开始。每段重置的话，一处舞台两侧会出现两个同向的折，之字在那里会"卡壳"。
+
+偏移方向是 `Cross(up, 段方向)`——**与该段垂直且水平**，所以折点只往旁边走，不会爬高。折点落在 t = 0.25 / 0.5 / 0.75，离最近的舞台 13.8 m 以上，**不会插进 8 m 的穹顶里**。
 
 #### 5.2.1 三个高度只差 1 厘米
 
@@ -466,8 +499,12 @@ beat 模式必须开：那边没有任何东西会重启视频，不循环的话
 | `domeColor` | `DanceRecording` | 每处不同（1984 暖棕 / 2016 青 / 2017 紫） |
 | `domeMaterial` | `DanceRecording` | 空（用 prefab 自带的） |
 | `fitScreenToVideo` | `DancePlace` | true |
+| `dancerRenderRadius` | `DancePlace` | 20 m（必须 > enterRadius，见 §2.3） |
+| `dancerRenderHysteresis` | `DancePlace` | 3 m |
 | `width` | `StageTimeline` | 2 m |
 | `height` | `StageTimeline` | 0.015（只有 1 cm 余量，见 §5.2.1） |
+| `foldsPerLeg` | `StageTimeline` | 3 |
+| `foldAmplitude` | `StageTimeline` | 9 m |
 | `leadIn` / `leadOut` | `StageTimeline` | 24 m |
 | `minSpacing` | `StageTimeline` | 50 m（低于就警告） |
 | `stops` | `StageTimeline` | **按年代排**，唯一要手工维护的列表 |
@@ -475,7 +512,7 @@ beat 模式必须开：那边没有任何东西会重启视频，不循环的话
 
 ## 11. 已知问题
 
-**11.5 ⚠️ 18 个蒙皮角色的加载代价没量过。** v4 把舞台从 3 处加到 6 处，`SuperFusionAncestor` 是 66.3k 顶点 / 52 骨骼，场景里现在有 18 个实例。同时只有 3 个在动（离场的整组停用），但**实例化和内存是六份的**，而这在一体机上从来没测过。真扛不住的做法是舞台按距离流式加载，而不是把舞者数量改回去。
+**11.5 ⚠️ 18 个蒙皮角色的加载代价没量过。** v4 把舞台从 3 处加到 6 处，`SuperFusionAncestor` 是 66.3k 顶点 / 52 骨骼，场景里现在有 18 个实例。v5 的距离渲染（§2.3）解决的是**运行时**那一半——任何时刻至多 3 个在跑；**没解决的是加载时那一半**，18 个 `SkinnedMeshRenderer` 仍然要在场景加载时全部实例化，内存也全占着。这在一体机上从来没测过。真扛不住的做法是舞台按距离流式加载，而不是把舞者数量改回去。
 
 **11.0 🔴 没有跨舞台的位移手段，而且 v4 让它更严重了。** 传送已从 prefab 移除（§5），而舞台间距从 24 米变成了 **55.3 米**，全程 210 米。摇杆推完整条线要一分多钟。**这是当前最大的功能缺口**：不补的话，六处舞台里实际只有出生那一处能玩到。
 

@@ -58,8 +58,9 @@ namespace RHCommunityHack.Play
                  "each and no per-instance editing.")]
         [SerializeField] Renderer domeRenderer;
 
-        [Tooltip("This stage's dancers. Switched off entirely when nobody is here - nine skinned " +
-                 "characters animating at once is the real cost in this scene, not the video.")]
+        [Tooltip("This stage's dancers. Switched on and off by DISTANCE, not by occupancy - see " +
+                 "dancerRenderRadius. Skinned characters are the real cost in this scene, not the " +
+                 "video: there are eighteen of them across six stages.")]
         [SerializeField] DanceCharacterDirector dancers;
 
         [Tooltip("World-fixed panel root, enabled only while the player is standing here.")]
@@ -74,6 +75,22 @@ namespace RHCommunityHack.Play
                  "some of it is - stretches it across a landscape quad, and the whole point of " +
                  "swapping one asset falls over on the first video that is not 16:9.")]
         [SerializeField] bool fitScreenToVideo = true;
+
+        [Header("Dancers")]
+        [Tooltip("The dancers exist only while the player's head is within this many metres of " +
+                 "the standing spot. Everything switches off together - the GameObject, so the " +
+                 "SkinnedMeshRenderers, the Animators and the director's playable graph go with " +
+                 "it, not just the draw call. " +
+                 "DELIBERATELY LARGER than enterRadius. Tying it to occupancy would make the " +
+                 "dancers appear at the same instant the panel does, six metres out, which reads " +
+                 "as a pop; at this radius you see them from outside the dome and then walk in. " +
+                 "With stages 55m apart, at most one stage is ever in range, so the running cost " +
+                 "is the same three dancers either way.")]
+        [SerializeField, Min(0f)] float dancerRenderRadius = 20f;
+
+        [Tooltip("Extra metres to travel before they switch off again. Without a gap, standing " +
+                 "on the boundary rebuilds the director's playable graph every frame.")]
+        [SerializeField, Min(0.1f)] float dancerRenderHysteresis = 3f;
 
         [Header("Occupancy")]
         [Tooltip("Step inside this to take the stage.")]
@@ -91,6 +108,7 @@ namespace RHCommunityHack.Play
 
         MaterialPropertyBlock block;
         MaterialPropertyBlock domeBlock;
+        bool dancersVisible;
         Vector3 authoredScreenScale;
         bool screenScaleCaptured;
 
@@ -112,7 +130,16 @@ namespace RHCommunityHack.Play
         void Awake()
         {
             CaptureScreenScale();
-            // Start vacated so a scene saved with panels visible does not open with three lit
+
+            // Dancers off until proximity says otherwise. A scene saved with them visible would
+            // otherwise show all eighteen on the first frame.
+            if (dancers != null)
+            {
+                dancers.gameObject.SetActive(false);
+                dancersVisible = false;
+            }
+
+            // Start vacated so a scene saved with panels visible does not open with six lit
             // stages and no player on any of them.
             SetOccupied(false);
         }
@@ -130,16 +157,38 @@ namespace RHCommunityHack.Play
 
             if (panel != null) panel.SetActive(occupied);
 
-            if (dancers != null)
-            {
-                // Activate BEFORE handing over the take: the director rebuilds its graph in
-                // OnEnable, and building one on a disabled object achieves nothing.
-                dancers.gameObject.SetActive(occupied);
-                dancers.SetRecording(occupied ? take : null);
-            }
+            // Dancers are NOT touched here. They belong to distance, not to occupancy, and to
+            // this component rather than to PlayModeController - see UpdateDancerProximity.
 
             if (!occupied) ParkVideo();
             ShowLive(occupied ? LiveTexture : null);
+        }
+
+        // Switches this stage's dancers on and off by distance. Called every frame by
+        // DancePlaceManager, which already has the head position and is the scene's one update
+        // driver; giving six DancePlaces an Update each would spread that decision out.
+        public void UpdateDancerProximity(Vector3 headPosition)
+        {
+            if (dancers == null) return;
+
+            float sqr = SqrDistanceTo(headPosition);
+            float on = dancerRenderRadius * dancerRenderRadius;
+            float off = (dancerRenderRadius + dancerRenderHysteresis) *
+                        (dancerRenderRadius + dancerRenderHysteresis);
+            bool want = dancersVisible ? sqr <= off : sqr <= on;
+
+            if (want != dancersVisible || dancers.gameObject.activeSelf != want)
+            {
+                dancersVisible = want;
+                // Activate BEFORE handing over the take: the director rebuilds its graph in
+                // OnEnable, and building one on a disabled object achieves nothing.
+                dancers.gameObject.SetActive(want);
+            }
+
+            // Re-asserted every frame rather than only on the transition. SetRecording returns
+            // immediately when nothing has changed, and asserting it here means the dancers
+            // recover on their own if anything else ever clears them.
+            if (want) dancers.SetRecording(take);
         }
 
         // ---- video -------------------------------------------------------------------------
@@ -263,6 +312,8 @@ namespace RHCommunityHack.Play
             Gizmos.DrawWireSphere(c, enterRadius);
             Gizmos.color = new Color(1f, 0.6f, 0.3f, 0.6f);
             Gizmos.DrawWireSphere(c, exitRadius);
+            Gizmos.color = new Color(0.8f, 0.5f, 1f, 0.5f);
+            Gizmos.DrawWireSphere(c, dancerRenderRadius);
             Gizmos.color = Color.green;
             Gizmos.DrawRay(c, StandingAnchor.forward * 2f);
         }

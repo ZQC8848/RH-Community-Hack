@@ -60,7 +60,6 @@ namespace RHCommunityHack.Play
         // the video, so there is one thing to hold rather than four that could drift apart.
         DancePlace place;
         DanceRecording take;
-        DanceCharacterDirector characters;
 
         public event Action<Mode> OnModeChanged;
         public event Action OnRecalibrated;
@@ -120,7 +119,6 @@ namespace RHCommunityHack.Play
         {
             place = stage;
             take = stage != null ? stage.Take : null;
-            characters = stage != null ? stage.Dancers : null;
             Transform facing = stage != null ? stage.StandingAnchor : null;
 
             // Both must face the same way or the orbs and the chart end up in different
@@ -150,7 +148,10 @@ namespace RHCommunityHack.Play
             foreach (var volume in handHitVolumes)
                 if (volume != null) volume.SetActive(false);
 
-            if (characters != null) characters.SetRecording(null);
+            // The dancers are NOT torn down here. They are driven by distance now, and by
+            // DancePlace rather than by this component, so walking off a stage leaves them
+            // dancing behind you until you are out of range - which is what you would expect
+            // to see over your shoulder.
 
             // Park, never Stop - the stage keeps its decoder warm so walking back onto it
             // resumes on the next frame instead of paying the warm-up again.
@@ -158,7 +159,6 @@ namespace RHCommunityHack.Play
 
             place = null;
             take = null;
-            characters = null;
             if (player != null)
             {
                 player.AnchorFacing = null;
@@ -237,9 +237,6 @@ namespace RHCommunityHack.Play
 
             bool beat = mode == Mode.Beat;
 
-            // Same take, same single source of truth as the player and the beat source. The
-            // dancers are not mode-specific, so this runs whichever branch is about to.
-            if (characters != null) characters.SetRecording(take);
             ApplyVideo(beat);
 
             if (beatRoot != null) beatRoot.SetActive(beat);

@@ -46,6 +46,11 @@ namespace RHCommunityHack.Play
 
             foreach (var place in active) place.SetOccupied(false);
 
+            // Once here as well as in Update, so the first rendered frame already has the right
+            // dancers on rather than switching them in a frame later.
+            if (head != null)
+                foreach (var place in active) place.UpdateDancerProximity(head.position);
+
             if (ui != null) ui.SetTarget(null);
             if (controller != null) controller.LeaveStage();
         }
@@ -75,8 +80,15 @@ namespace RHCommunityHack.Play
         void Update()
         {
             if (head == null) return;
+            Vector3 h = head.position;
 
-            DancePlace next = Resolve(head.position);
+            // EVERY stage is asked, not just the occupied one: the dancers are driven by
+            // distance and are visible well before a stage is taken, so a stage you are only
+            // walking past still has a say.
+            foreach (var place in active)
+                if (place != null) place.UpdateDancerProximity(h);
+
+            DancePlace next = Resolve(h);
             if (next != Current) Switch(next);
 
             // Re-asked every frame, not once on arrival: the decoder needs a second or two to
@@ -114,7 +126,7 @@ namespace RHCommunityHack.Play
             if (Current != null)
             {
                 // Order matters: tear the run down while the stage is still standing, then vacate
-                // it. Vacating first would switch off the dancers and panel that teardown reads.
+                // it. Vacating first would switch off the panel that teardown writes into.
                 if (controller != null) controller.LeaveStage();
                 if (ui != null) ui.SetTarget(null);
                 Current.SetOccupied(false);

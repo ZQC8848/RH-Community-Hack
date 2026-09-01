@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace RHCommunityHack.Environment
@@ -46,6 +47,16 @@ namespace RHCommunityHack.Environment
         [SerializeField, Min(0f)] float leadIn = 24f;
         [SerializeField, Min(0f)] float leadOut = 24f;
 
+        [Tooltip("Extra folds inserted BETWEEN each pair of stages, so the line zigzags on its " +
+                 "way rather than running dead straight from dome to dome. Zero gives one bend " +
+                 "per stage and nothing else.")]
+        [SerializeField, Range(0, 8)] int foldsPerLeg = 3;
+
+        [Tooltip("How far each of those folds steps sideways, in metres, measured square to the " +
+                 "leg. They alternate left and right, and the sign carries across stages so the " +
+                 "whole path reads as one zigzag rather than restarting at every dome.")]
+        [SerializeField, Min(0f)] float foldAmplitude = 9f;
+
         [Tooltip("Rounding on each zigzag corner. Zero gives a hard mitre; the default softens " +
                  "the turn without making it look like a curve.")]
         [SerializeField, Range(0, 16)] int cornerVertices = 6;
@@ -75,7 +86,7 @@ namespace RHCommunityHack.Environment
             if (line == null) return;
 
             int n = CountValid();
-            if (n < 2) { line.positionCount = 0; return; }
+            if (n < 2) { line.positionCount = 0; return; }   // one point is not a path
 
             // A LineRenderer's ribbon faces its alignment axis. TransformZ plus a transform whose
             // forward is UP is what lays it flat on the ground; the default (View) would billboard
@@ -91,43 +102,69 @@ namespace RHCommunityHack.Environment
             line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             line.receiveShadows = false;
 
-            var points = new Vector3[n + 2];
-            int w = 1;
-            Vector3 first = Vector3.zero, second = Vector3.zero, last = Vector3.zero, secondLast = Vector3.zero;
-            Vector3 previous = Vector3.zero;
-            Transform previousStop = null;
-
+            // Flatten the stops first: the folds need to look at a leg's two ends at once, and
+            // a stop can be null anywhere in the array.
+            var anchors = new List<Vector3>(n);
+            var anchorNames = new List<string>(n);
             foreach (var stop in stops)
             {
                 if (stop == null) continue;
                 Vector3 p = stop.position;
                 p.y = height;
-                points[w] = p;
-
-                if (w == 1) first = p;
-                else if (w == 2) second = p;
-                if (w >= 2)
-                {
-                    secondLast = previous;
-                    float gap = Vector3.Distance(previous, p);
-                    if (gap < minSpacing)
-                        Debug.LogWarning($"[StageTimeline] '{previousStop.name}' and '{stop.name}' are " +
-                                         $"{gap:F1}m apart, closer than the {minSpacing:F0}m these " +
-                                         "stages are meant to keep.", this);
-                }
-                last = p;
-                previous = p;
-                previousStop = stop;
-                w++;
+                anchors.Add(p);
+                anchorNames.Add(stop.name);
             }
 
-            // Lead-in and lead-out continue the first and last segments rather than picking a
-            // direction of their own, so the tails stay on the zigzag.
-            points[0] = first + Direction(second, first) * leadIn;
-            points[n + 1] = last + Direction(secondLast, last) * leadOut;
+            var points = new List<Vector3>(anchors.Count * (foldsPerLeg + 1) + 2);
 
-            line.positionCount = points.Length;
-            line.SetPositions(points);
+            // Placeholder: filled in once the first leg's direction is known.
+            points.Add(Vector3.zero);
+
+            // Alternates once per fold and KEEPS COUNTING ACROSS LEGS, so the sidestep after a
+            // stage goes the opposite way to the one before it. Resetting per leg would put two
+            // folds of the same sign either side of a dome, and the zigzag would stutter there.
+            int side = 0;
+
+            for (int i = 0; i < anchors.Count; i++)
+            {
+                points.Add(anchors[i]);
+                if (i + 1 >= anchors.Count) break;
+
+                Vector3 a = anchors[i];
+                Vector3 b = anchors[i + 1];
+
+                float gap = Vector3.Distance(a, b);
+                if (gap < minSpacing)
+                    Debug.LogWarning($"[StageTimeline] '{anchorNames[i]}' and '{anchorNames[i + 1]}' " +
+                                     $"are {gap:F1}m apart, closer than the {minSpacing:F0}m these " +
+                                     "stages are meant to keep.", this);
+
+                Vector3 along = b - a;
+                along.y = 0f;
+                if (along.sqrMagnitude < 1e-6f) continue;
+
+                // Square to the leg and flat, so a fold steps sideways rather than uphill.
+                Vector3 sideways = Vector3.Cross(Vector3.up, along.normalized);
+
+                for (int f = 1; f <= foldsPerLeg; f++)
+                {
+                    float t = (float)f / (foldsPerLeg + 1);
+                    float sign = (side++ % 2 == 0) ? 1f : -1f;
+                    Vector3 p = Vector3.Lerp(a, b, t) + sideways * (foldAmplitude * sign);
+                    p.y = height;
+                    points.Add(p);
+                }
+            }
+
+            // Lead-in and lead-out continue the first and last SEGMENTS - which are now folds,
+            // not stages - rather than picking a direction of their own, so the tails stay on
+            // the zigzag instead of shooting off square to it.
+            points[0] = points[1] + Direction(points[2], points[1]) * leadIn;
+            int end = points.Count - 1;
+            points.Add(points[end] + Direction(points[end - 1], points[end]) * leadOut);
+
+            line.positionCount = points.Count;
+            line.SetPositions(points.ToArray());
         }
 
         static Vector3 Direction(Vector3 from, Vector3 to)
