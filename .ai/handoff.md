@@ -1,6 +1,25 @@
 # Current state
 
-**Last updated: 2026-08-29**
+**Last updated: 2026-08-31**
+
+## Read this before renaming anything
+
+The project is the prototype layer of a narrative VR piece. Its script -
+`Wage Love IFeel.pdf` - is translated and mapped to the implementation in
+[../Docs/Wage Love 剧本翻译与实现对照.md](../Docs/Wage%20Love%20%E5%89%A7%E6%9C%AC%E7%BF%BB%E8%AF%91%E4%B8%8E%E5%AE%9E%E7%8E%B0%E5%AF%B9%E7%85%A7.md).
+
+**The asset names are not placeholders.** `Dance_1984Dancinginstreets`,
+`Dance_2016compnoholdingback`, `Dance_2017Wiacwagelove`,
+`LaunchPad_Compassion_Dance_test` and `SuperFusionAncestor` are all dated beats on
+that script's timeline - Motown 1964/1984, the 2016 Oculus Launchpad compassion
+dance, the 2017 film *When It All Changed* plus Wage Love, and the ancestors that
+join the dance at MIT. They look like scratch names and are not.
+
+The mapping also settles two things that were previously open: keyed video people and
+3D dancers are meant to **coexist**, and the dancers are meant to move **in step with
+the take** ("their movements all have a semblance of the same move you're doing"),
+which makes the director's independent clock a defect rather than an accepted cost -
+see [decisions/one-clip-many-dancers.md](decisions/one-clip-many-dancers.md).
 
 ## Dance capture (2026-08-26) — new subsystem
 
@@ -438,3 +457,11 @@ Load-bearing points:
 - If STYLY NetSync ever gets reinstalled, expect the same package-removal-leftover-files
   issue in reverse (leftover files from *this* revert lingering) — see
   [debug/INDEX.md](debug/INDEX.md) for the mechanism
+- **Renaming a take or a model because the name looks like junk.** They are script
+  timeline beats — see the top of this file
+- **Adding a video without setting the importer to transcode to VP8.** H.264 goes
+  through the OS decoder, which takes ~55s to produce a first picture on this machine
+  and reports no error at all. It has already caught this project three times
+- **The three stages are laid out as an equilateral triangle, but the script wants a
+  timeline** — a line, in date order, where teleporting means moving forward through
+  history rather than picking a song. Undecided; noted in the mapping doc §5
