@@ -5,14 +5,13 @@ using RHCommunityHack.DanceCapture;
 
 namespace RHCommunityHack.Play
 {
-    // One stage, and the root of the DanceStage prefab. Three of these stand 24m apart, and the
-    // player moves between them to pick which dance they want - going there IS the song select,
-    // which is why there is no menu.
+    // One stage, and the root of the DanceStage prefab. Six of these stand 55.3m apart along a
+    // zigzag timeline, in date order.
     //
-    // 2026-09-01: the teleport beacon that used to stand on each stage has been removed on
-    // request, along with the TeleportationAnchor and collider it carried. Nothing in this
-    // prefab is a teleport target any more; how the player travels 24m between stages is now
-    // an open question, and the domes are what the stages are found by from a distance.
+    // The player no longer chooses which one to visit: TimelineDirector walks them along the
+    // line, dissolving each dome behind them. The teleport beacon that used to stand on every
+    // stage is gone, along with its TeleportationAnchor and collider - nothing in this prefab is
+    // a teleport target any more.
     //
     // A stage owns everything local to it: its dome, its screen and its own VideoPlayer, its
     // dancers, its panel and the spot you stand on. It owns no gameplay. Orbs, beat
@@ -54,9 +53,14 @@ namespace RHCommunityHack.Play
         [SerializeField] DanceVideoScreen videoScreen;
 
         [Tooltip("The inverted sphere around this stage. Its material and colour come from the " +
-                 "take, so three stages can look like three different places with one asset " +
-                 "each and no per-instance editing.")]
+                 "take, so six stages can look like six different places with one asset each and " +
+                 "no per-instance editing. Deactivating THIS renderer's GameObject takes the " +
+                 "floor and the floor's collider with it, because the floor is its child.")]
         [SerializeField] Renderer domeRenderer;
+
+        [Tooltip("The disc floor inside the dome. Dissolves with the dome rather than after it, " +
+                 "so the room comes apart as one thing.")]
+        [SerializeField] Renderer domeFloorRenderer;
 
         [Tooltip("This stage's dancers. Switched on and off by DISTANCE, not by occupancy - see " +
                  "dancerRenderRadius. Skinned characters are the real cost in this scene, not the " +
@@ -101,6 +105,7 @@ namespace RHCommunityHack.Play
 
         static readonly int BaseMapId = Shader.PropertyToID("_BaseMap");
         static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        static readonly int DissolveId = Shader.PropertyToID("_Dissolve");
         static readonly int KeyColorId = Shader.PropertyToID("_KeyColor");
         static readonly int ThresholdId = Shader.PropertyToID("_Threshold");
         static readonly int SmoothnessId = Shader.PropertyToID("_Smoothness");
@@ -108,7 +113,9 @@ namespace RHCommunityHack.Play
 
         MaterialPropertyBlock block;
         MaterialPropertyBlock domeBlock;
+        MaterialPropertyBlock floorBlock;
         bool dancersVisible;
+        float dissolve;
         Vector3 authoredScreenScale;
         bool screenScaleCaptured;
 
@@ -272,6 +279,45 @@ namespace RHCommunityHack.Play
             if ((t.localScale - wanted).sqrMagnitude > 1e-6f) t.localScale = wanted;
         }
 
+        // ---- dissolve ------------------------------------------------------------------------
+
+        // 0 leaves the dome solid, 1 removes it completely. Driven by TimelineDirector when the
+        // player is finished with this stage.
+        //
+        // It lives here rather than in the director because the dome's MaterialPropertyBlock has
+        // to have exactly ONE owner: SetPropertyBlock replaces the whole block, so a second
+        // component writing _Dissolve would wipe the per-take _BaseColor written by
+        // ApplyDomeLook, and vice versa. Both paths go through this class and read the existing
+        // block before writing it.
+        public float Dissolve => dissolve;
+
+        public void SetDissolve(float amount)
+        {
+            dissolve = Mathf.Clamp01(amount);
+
+            // Fully gone: switch the whole dome off, which takes the floor, its renderer and its
+            // collider with it in one move, and costs nothing thereafter.
+            if (domeRenderer != null)
+            {
+                bool present = dissolve < 1f;
+                if (domeRenderer.gameObject.activeSelf != present)
+                    domeRenderer.gameObject.SetActive(present);
+                if (!present) return;
+            }
+
+            ApplyBlock(domeRenderer, ref domeBlock);
+            ApplyBlock(domeFloorRenderer, ref floorBlock);
+        }
+
+        void ApplyBlock(Renderer r, ref MaterialPropertyBlock b)
+        {
+            if (r == null) return;
+            b ??= new MaterialPropertyBlock();
+            r.GetPropertyBlock(b);
+            b.SetFloat(DissolveId, dissolve);
+            r.SetPropertyBlock(b);
+        }
+
         // ---- dome --------------------------------------------------------------------------
 
         // Applied in edit mode too, so dropping a different take on an instance shows what that
@@ -291,6 +337,7 @@ namespace RHCommunityHack.Play
                 return;
             }
 
+            // Read the block first so the dissolve amount already in it survives.
             domeBlock ??= new MaterialPropertyBlock();
             domeRenderer.GetPropertyBlock(domeBlock);
             domeBlock.SetColor(BaseColorId, take.domeColor);

@@ -90,7 +90,10 @@ namespace RHCommunityHack.DanceCapture
             passElapsed = 0f;
         }
 
-        void FinishPass()
+        // File the running pass as a result. Public since 2026-09-01: the timeline carries the
+        // player off a stage when it is done, and being carried off is a finish, not a walk-off.
+        // Safe to call with nothing danced - a pass of zero length records nothing.
+        public void FinishPass()
         {
             if (passElapsed <= 0f) return;
 

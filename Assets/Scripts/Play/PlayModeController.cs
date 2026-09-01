@@ -137,6 +137,15 @@ namespace RHCommunityHack.Play
             SetMode(CurrentMode);
         }
 
+        // The timeline is carrying the player off a finished stage. Same teardown as walking
+        // away, except the pass is FILED rather than discarded - see DanceFollowScore.Abandon
+        // for why those are different operations.
+        public void CompleteStage()
+        {
+            if (followScore != null) followScore.FinishPass();
+            LeaveStage();
+        }
+
         // Leaving abandons the run: this is a walk-off, not a pause.
         public void LeaveStage()
         {

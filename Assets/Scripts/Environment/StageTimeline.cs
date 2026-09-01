@@ -68,7 +68,53 @@ namespace RHCommunityHack.Environment
 
         LineRenderer line;
 
+        // The FULL path, rebuilt only when the stages move. Growth then draws a prefix of it,
+        // which is why the two are separate: recomputing folds every frame during a 3s grow
+        // would be wasted work and would let the shape shift while it was being drawn.
+        readonly List<Vector3> path = new List<Vector3>();
+        readonly List<float> cumulative = new List<float>();   // arc length at each path point
+        float grown = -1f;                                     // metres drawn, -1 = whole path
+
         public float Width => width;
+
+        // The running order, read by TimelineDirector. Sharing this array rather than keeping a
+        // second one is what stops the line growing toward a stage the director is not visiting.
+        public IReadOnlyList<Transform> Stops => stops;
+
+        // Total length of the drawn path, folds included. Note this is much longer than the
+        // straight-line distance between stages - about 78m per 55m leg with three folds - so
+        // growth speed and stage spacing are not the same number.
+        public float TotalLength => cumulative.Count > 0 ? cumulative[cumulative.Count - 1] : 0f;
+
+        // Arc length at which a given stage sits, so a caller can grow "up to stage N" without
+        // knowing anything about folds. Index is into the ORDERED stops array.
+        public float LengthAtStop(int stopIndex)
+        {
+            int seen = -1;
+            for (int i = 0; i < path.Count; i++)
+            {
+                if (!isStop[i]) continue;
+                seen++;
+                if (seen == stopIndex) return cumulative[i];
+            }
+            return TotalLength;
+        }
+
+        readonly List<bool> isStop = new List<bool>();
+
+        // Draw only the first `metres` of the path. Anything at or past the end draws all of it.
+        public void GrowTo(float metres)
+        {
+            grown = metres;
+            Redraw();
+        }
+
+        // Back to the whole path - the authoring default, and what edit mode always shows.
+        public void ShowWholePath()
+        {
+            grown = -1f;
+            Redraw();
+        }
 
         void OnEnable() => Rebuild();
         void OnValidate() => Rebuild();
@@ -76,7 +122,8 @@ namespace RHCommunityHack.Environment
         void Update()
         {
             // Edit mode only: nothing notifies us when a stage is dragged, and the whole point is
-            // that the line follows. At runtime the stages do not move, so this would be waste.
+            // that the line follows. At runtime the stages do not move, so this would be waste -
+            // and growth redraws from the cached path without rebuilding it.
             if (!Application.isPlaying) Rebuild();
         }
 
@@ -163,8 +210,67 @@ namespace RHCommunityHack.Environment
             int end = points.Count - 1;
             points.Add(points[end] + Direction(points[end - 1], points[end]) * leadOut);
 
-            line.positionCount = points.Count;
-            line.SetPositions(points.ToArray());
+            path.Clear();
+            path.AddRange(points);
+
+            // Mark which points are stages rather than folds, so LengthAtStop can answer without
+            // re-deriving the fold pattern. Index 0 is the lead-in and the last is the lead-out.
+            isStop.Clear();
+            for (int i = 0; i < path.Count; i++) isStop.Add(false);
+            {
+                int p = 1;
+                foreach (var stop in stops)
+                {
+                    if (stop == null) continue;
+                    isStop[p] = true;
+                    p += 1 + foldsPerLeg;   // this stage, then the folds on the leg leaving it
+                    if (p >= path.Count) break;
+                }
+            }
+
+            cumulative.Clear();
+            float run = 0f;
+            cumulative.Add(0f);
+            for (int i = 1; i < path.Count; i++)
+            {
+                run += Vector3.Distance(path[i - 1], path[i]);
+                cumulative.Add(run);
+            }
+
+            Redraw();
+        }
+
+        // Writes the visible prefix of `path` into the LineRenderer. Split out from Rebuild so
+        // growth is cheap: it walks a cached polyline instead of recomputing folds.
+        void Redraw()
+        {
+            if (line == null) line = GetComponent<LineRenderer>();
+            if (line == null || path.Count < 2) return;
+
+            if (grown < 0f || grown >= TotalLength)
+            {
+                line.positionCount = path.Count;
+                line.SetPositions(path.ToArray());
+                return;
+            }
+
+            if (grown <= 0f) { line.positionCount = 0; return; }
+
+            // Every whole segment that fits, then one partial segment to the exact distance -
+            // without that last interpolated point the line would jump a fold at a time.
+            int last = 0;
+            while (last + 1 < path.Count && cumulative[last + 1] <= grown) last++;
+
+            var drawn = new Vector3[last + 2];
+            for (int i = 0; i <= last; i++) drawn[i] = path[i];
+
+            float remain = grown - cumulative[last];
+            float segment = cumulative[last + 1] - cumulative[last];
+            float t = segment > 1e-4f ? Mathf.Clamp01(remain / segment) : 0f;
+            drawn[last + 1] = Vector3.Lerp(path[last], path[last + 1], t);
+
+            line.positionCount = drawn.Length;
+            line.SetPositions(drawn);
         }
 
         static Vector3 Direction(Vector3 from, Vector3 to)

@@ -327,6 +327,47 @@ Decisions: [decisions/beats-from-recorded-motion.md](decisions/beats-from-record
 - Verified by switching four times in play mode: no leftover beats, particles or line points at
   any transition. **Not tried in a headset.**
 
+## The timeline advances by itself (2026-09-01)
+
+`TimelineDirector` on Play Controller walks the player along the line without them steering, which
+is the script's own mechanic - "if the player stands still the timeline advances by itself,
+watchable as an interactive documentary" (p.93) - and also fills the travel gap left when the
+teleport beacons were removed.
+
+Per stage: **dwell 3s, dissolve 1.5s, grow 3s, settle 2s, fade-move-fade 2x0.35s**. Measured
+**60.5s** for the whole six-stage run.
+
+- `dwellSeconds` is a placeholder for "the immersive video has finished". **`StageComplete()` is
+  the single method that changes** when the video arrives; nothing else in the state machine
+  needs to know.
+- **It does not decide which stage is active.** That stays with DancePlaceManager's distance
+  test - the director only moves the player, and arriving inside the enter radius makes the stage
+  take itself. Two owners of "the current stage" is the thing most likely to rot here.
+- The next stage's video is warmed during the grow phase, so arrival has a picture instead of
+  1.7s of decoder warm-up.
+- Being carried off a stage now **commits** the follow-score pass (`PlayModeController.
+  CompleteStage`) rather than abandoning it. `DanceFollowScore.FinishPass` became public for this.
+- Domes are all present at the start and dissolve one at a time behind the player. Wayfinding
+  still works because the ones ahead are still standing.
+
+> ⚠️ **The fade is a world-space quad parented to the camera, NOT a Canvas.** A Screen Space -
+> Overlay canvas renders nothing at all in a headset, so the obvious way to build a fade looks
+> perfect on the monitor and is simply absent in VR.
+
+> ⚠️ **Never detect "the frame we crossed time T" with `elapsed < T + Time.deltaTime`.** That is a
+> one-frame-wide window that fires zero times or twice depending on frame timing. The first
+> version of the travel fade did exactly this; twice meant the stage index advanced twice and a
+> whole stage was skipped. Symptom: after a full run Stage 3 had never dissolved and its dome was
+> still standing while the other five had gone - and the player still reached the end, so from
+> outside everything looked roughly right. Use an explicit flag.
+
+The dissolve shader is `Assets/Shaders/DomeDissolve.shader`, shared by the dome (Cull Back, sweep
+0.55) and its floor (Cull Off, sweep 0) as two materials. Object-space procedural noise, no
+texture - a dissolve map on an equirectangular sphere pinches at the poles, which is exactly where
+a dome is most visible from inside. It samples `_BaseMap` even though the domes are flat colour,
+so plugging 360 video into it later is not a rewrite. Alpha-tested rather than transparent,
+because a dome has to keep occluding until it is gone.
+
 ## Six stages on a zigzag timeline (2026-09-01)
 
 The stages are laid out as a **zigzag line in date order**, not the old equilateral triangle.
@@ -399,8 +440,10 @@ instances, so they were never the loading cost - the 18 copies of a 67-node bone
 > pink. Committed 2026-09-01. Worth renaming to something honest, which is safe to do from inside
 > Unity since the reference is by guid.
 
-> 🔴 Travel is still missing (see below) and v4 makes it worse: the gap between stages went from
-> 24m to 55.3m, past the 34.4m a Velocity-18 teleport arc could reach even if it were restored.
+> Travel was missing at v4 and is solved at v7 by the auto-progression above - not by restoring
+> teleport. The cost is that walking-to-choose is gone: this version is a linear guided tour. The
+> script wants both (p.93: it advances by itself, and you can also teleport along it to skip), so
+> the manual path can come back later.
 
 ## Dance stages are one prefab (2026-09-01)
 
@@ -595,9 +638,8 @@ Load-bearing points:
   empty and let `DanceVideoScreen` allocate one per instance
 - **Hand-editing anything but `take` on a stage instance.** It works, and it quietly ends
   the property that made the prefab worth having
-- **Assuming you can still teleport between stages.** You cannot, since 2026-09-01 - the
-  ray fires and lands nowhere, which reads as a broken controller rather than as a missing
-  feature. The stages are now 55.3m apart, so thumbstick is a minute-plus walk
+- **Assuming you can still teleport between stages.** You cannot - the ray fires and lands
+  nowhere. Travel is the director's job now, and the player does not steer
 - **Reading a `[DancePlayer] No recording assigned` warning as a fault.** Three of the six
   stages are deliberate empty placeholders for script beats with no footage yet
 - ~~The three stages are laid out as an equilateral triangle, but the script wants a
