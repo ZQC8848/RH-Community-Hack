@@ -54,13 +54,9 @@ namespace RHCommunityHack.Play
 
         [Tooltip("The inverted sphere around this stage. Its material and colour come from the " +
                  "take, so six stages can look like six different places with one asset each and " +
-                 "no per-instance editing. Deactivating THIS renderer's GameObject takes the " +
-                 "floor and the floor's collider with it, because the floor is its child.")]
+                 "no per-instance editing. This is also the ONLY thing that dissolves - the floor " +
+                 "inside it is deliberately left alone, see SetDissolve.")]
         [SerializeField] Renderer domeRenderer;
-
-        [Tooltip("The disc floor inside the dome. Dissolves with the dome rather than after it, " +
-                 "so the room comes apart as one thing.")]
-        [SerializeField] Renderer domeFloorRenderer;
 
         [Tooltip("This stage's dancers. Switched on and off by DISTANCE, not by occupancy - see " +
                  "dancerRenderRadius. Skinned characters are the real cost in this scene, not the " +
@@ -113,7 +109,6 @@ namespace RHCommunityHack.Play
 
         MaterialPropertyBlock block;
         MaterialPropertyBlock domeBlock;
-        MaterialPropertyBlock floorBlock;
         bool dancersVisible;
         float dissolve;
         Vector3 authoredScreenScale;
@@ -284,6 +279,12 @@ namespace RHCommunityHack.Play
         // 0 leaves the dome solid, 1 removes it completely. Driven by TimelineDirector when the
         // player is finished with this stage.
         //
+        // ONLY THE SPHERE DISSOLVES. The disc floor inside it is untouched and stays behind after
+        // the dome has gone: it is the ground the player is standing on, and watching the floor
+        // come apart under your feet is a different and much less comfortable experience in a
+        // headset than watching the room open up above you. What is left is a lit disc marking
+        // where the stage was, which the line runs straight across.
+        //
         // It lives here rather than in the director because the dome's MaterialPropertyBlock has
         // to have exactly ONE owner: SetPropertyBlock replaces the whole block, so a second
         // component writing _Dissolve would wipe the per-take _BaseColor written by
@@ -294,19 +295,16 @@ namespace RHCommunityHack.Play
         public void SetDissolve(float amount)
         {
             dissolve = Mathf.Clamp01(amount);
+            if (domeRenderer == null) return;
 
-            // Fully gone: switch the whole dome off, which takes the floor, its renderer and its
-            // collider with it in one move, and costs nothing thereafter.
-            if (domeRenderer != null)
-            {
-                bool present = dissolve < 1f;
-                if (domeRenderer.gameObject.activeSelf != present)
-                    domeRenderer.gameObject.SetActive(present);
-                if (!present) return;
-            }
+            // Fully gone: switch off the sphere's RENDERER, not its GameObject. The floor is a
+            // child of the dome, so deactivating the object would take the floor, its collider
+            // and the ground under the player with it - and the floor is meant to stay.
+            bool present = dissolve < 1f;
+            if (domeRenderer.enabled != present) domeRenderer.enabled = present;
+            if (!present) return;
 
             ApplyBlock(domeRenderer, ref domeBlock);
-            ApplyBlock(domeFloorRenderer, ref floorBlock);
         }
 
         void ApplyBlock(Renderer r, ref MaterialPropertyBlock b)

@@ -361,9 +361,23 @@ Per stage: **dwell 3s, dissolve 1.5s, grow 3s, settle 2s, fade-move-fade 2x0.35s
 > still standing while the other five had gone - and the player still reached the end, so from
 > outside everything looked roughly right. Use an explicit flag.
 
-The dissolve shader is `Assets/Shaders/DomeDissolve.shader`, shared by the dome (Cull Back, sweep
-0.55) and its floor (Cull Off, sweep 0) as two materials. Object-space procedural noise, no
-texture - a dissolve map on an equirectangular sphere pinches at the poles, which is exactly where
+The dissolve shader is `Assets/Shaders/DomeDissolve.shader`, and **only the sphere uses it**. The
+disc floor is deliberately left alone and stays behind after the dome has gone - it is the ground
+the player is standing on, and watching the floor come apart underfoot is a much worse experience
+in a headset than watching the room open above you. What remains is a lit disc marking where the
+stage was, with the line running across it. The floor is back on plain opaque URP/Unlit, since it
+no longer needs alpha clipping and a surface that large defeats early-Z when alpha-tested.
+
+> ⚠️ **The dissolve switches off the sphere's Renderer, not the Dome GameObject.** The floor is a
+> child of the dome, so deactivating the object would take the floor, its MeshCollider and the
+> ground under the player with it.
+
+> ⚠️ **`StageTimeline.height` is relative to each stop, not a world y.** It was briefly absolute;
+> the scene was then raised to y=0.1 and the line ended up 85mm under the ground, invisible, with
+> nothing to say why. The stack it lives in is only a centimetre deep - floor +0.01, line +0.015,
+> standing marker +0.02 above the stage root.
+
+Object-space procedural noise, no texture - a dissolve map on an equirectangular sphere pinches at the poles, which is exactly where
 a dome is most visible from inside. It samples `_BaseMap` even though the domes are flat colour,
 so plugging 360 video into it later is not a rewrite. Alpha-tested rather than transparent,
 because a dome has to keep occluding until it is gone.

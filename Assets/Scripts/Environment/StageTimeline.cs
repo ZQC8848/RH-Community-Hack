@@ -37,9 +37,13 @@ namespace RHCommunityHack.Environment
         [Tooltip("Line width in metres.")]
         [SerializeField, Min(0.01f)] float width = 2f;
 
-        [Tooltip("Height above y=0. Must sit above the ground Plane (y=0) and above each dome's " +
-                 "floor (y=0.01), but below the standing markers (y=0.02) so those still read on " +
-                 "top of it. One centimetre of headroom either side is all there is.")]
+        [Tooltip("Height ABOVE EACH STAGE, not above world zero. Relative because an absolute " +
+                 "height silently buries the line the moment anything moves vertically: the scene " +
+                 "was raised to y=0.1 and a line pinned at 0.015 ended up 85mm under the ground, " +
+                 "invisible, with nothing to indicate why. " +
+                 "The stack it has to fit into is one centimetre deep. Relative to the stage: " +
+                 "dome floor +0.01, THIS +0.015, standing marker +0.02 - so the floor is under " +
+                 "the line and the marker reads on top of it.")]
         [SerializeField] float height = 0.015f;
 
         [Tooltip("Metres of line before the first stop and after the last, so the timeline reads " +
@@ -153,11 +157,13 @@ namespace RHCommunityHack.Environment
             // a stop can be null anywhere in the array.
             var anchors = new List<Vector3>(n);
             var anchorNames = new List<string>(n);
+            // Each stage carries its own base height, so a line through stages at different
+            // heights follows them instead of cutting through the ground between.
             foreach (var stop in stops)
             {
                 if (stop == null) continue;
                 Vector3 p = stop.position;
-                p.y = height;
+                p.y = stop.position.y + height;
                 anchors.Add(p);
                 anchorNames.Add(stop.name);
             }
@@ -197,9 +203,9 @@ namespace RHCommunityHack.Environment
                 {
                     float t = (float)f / (foldsPerLeg + 1);
                     float sign = (side++ % 2 == 0) ? 1f : -1f;
-                    Vector3 p = Vector3.Lerp(a, b, t) + sideways * (foldAmplitude * sign);
-                    p.y = height;
-                    points.Add(p);
+                    // Lerp already carries the height between the two stages; the sideways step
+                    // is flat, so nothing needs to re-assert y here.
+                    points.Add(Vector3.Lerp(a, b, t) + sideways * (foldAmplitude * sign));
                 }
             }
 
