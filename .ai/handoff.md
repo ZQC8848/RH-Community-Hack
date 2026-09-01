@@ -651,6 +651,10 @@ Load-bearing points:
 - **Adding a video without setting the importer to transcode to VP8.** H.264 goes
   through the OS decoder, which takes ~55s to produce a first picture on this machine
   and reports no error at all. It has already caught this project three times
+- **Reading "frozen on frame one" as the decoder problem again.** It has now happened from two
+  unrelated causes. `frame == -1` is the decoder (importer, H.264). `frame == 0` with
+  `paused == true` means the decoder did its job and nobody resumed it - look at the caller.
+  See [debug/2026-09-01-video-frozen-on-frame-one-again-after-per-stage-players.md](debug/2026-09-01-video-frozen-on-frame-one-again-after-per-stage-players.md)
 - **Sharing a RenderTexture asset between stage prefab instances.** Silent: all three
   decoders write the same pixels, and you see whichever wrote last. Leave `targetTexture`
   empty and let `DanceVideoScreen` allocate one per instance

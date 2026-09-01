@@ -156,7 +156,12 @@ namespace RHCommunityHack.DanceCapture
             if (musicSource != null) musicSource.Stop();
             // Park rather than Stop, so the buffered decoder survives. DanceRecorder calls this
             // before every take; stopping here would make the recorder pay the warm-up again.
-            if (screen != null) screen.Park();
+            //
+            // CurrentScreen, not the cached `screen` field: in PlayScene the screen arrives at
+            // runtime from the stage and the serialized videoPlayer is empty, so `screen` is
+            // permanently null there.
+            var current = CurrentScreen;
+            if (current != null) current.Park();
         }
 
         // Re-anchors the origin to the head's current pose. Playback restarts from the top so
@@ -239,14 +244,23 @@ namespace RHCommunityHack.DanceCapture
             double now = AudioSettings.dspTime;
             if (now < resumeAtDsp) return;
 
-            // Wait for isPrepared before starting, exactly as DanceRecorder does. Calling Play()
-            // while Prepare() is still in flight leaves the player wedged: it reports isPlaying
-            // but never decodes past frame 0, which looked like a frozen first frame.
-            if (videoStartPending && screen != null && screen.IsReadyFor(recording.video))
+            // Wait for a real picture before starting, exactly as DanceRecorder does. Calling
+            // Play() while Prepare() is still in flight leaves the player wedged: it reports
+            // isPlaying but never decodes past frame 0, which looks like a frozen first frame.
+            //
+            // CurrentScreen, NOT the cached `screen` field. This line read `screen` until
+            // 2026-09-01 and that was a silent regression: once each stage got its own
+            // VideoPlayer and the scene's shared one was deleted, `videoPlayer` was empty, so
+            // `screen` never got assigned and this condition could never be true. The take
+            // played, the dancers danced, and the video sat paused on frame one - the project's
+            // oldest symptom arriving from a completely new direction.
+            var video = CurrentScreen;
+            if (videoStartPending && video != null && video.IsReadyFor(recording.video))
             {
                 videoStartPending = false;
-                screen.Resume();
+                video.Resume();
             }
+            WarnIfVideoNeverStarts(video);
 
             float elapsed = (float)(now - startDsp);
             float duration = recording.TrimmedDuration;
@@ -257,7 +271,7 @@ namespace RHCommunityHack.DanceCapture
                 {
                     IsPlaying = false;
                     if (musicSource != null) musicSource.Stop();
-                    if (screen != null) screen.Park();
+                    if (video != null) video.Park();
                     OnPlaybackFinished?.Invoke();
                     return;
                 }
@@ -287,6 +301,37 @@ namespace RHCommunityHack.DanceCapture
                     frame.TransformRotation(sample.rightRotation));
             }
 
+        }
+
+        // A pending video start that never resolves is invisible from the outside: the take
+        // plays, nothing errors, and only the picture is wrong. Both times this has happened the
+        // cost was in finding it, not in fixing it - so it says so out loud now, once.
+        const float VideoStartWarnSeconds = 8f;
+        float videoStartPendingSince;
+        bool warnedAboutVideoStart;
+
+        void WarnIfVideoNeverStarts(DanceVideoScreen video)
+        {
+            if (!videoStartPending)
+            {
+                videoStartPendingSince = 0f;
+                warnedAboutVideoStart = false;
+                return;
+            }
+
+            if (videoStartPendingSince <= 0f) videoStartPendingSince = UnityEngine.Time.realtimeSinceStartup;
+            if (warnedAboutVideoStart) return;
+            if (UnityEngine.Time.realtimeSinceStartup - videoStartPendingSince < VideoStartWarnSeconds) return;
+
+            warnedAboutVideoStart = true;
+            Debug.LogWarning(
+                $"[DancePlayer] '{recording.video.name}' has been waiting to start for " +
+                $"{VideoStartWarnSeconds:F0}s and the picture is stuck. Either there is no screen " +
+                (video == null
+                    ? "(there is NOT - nobody set DancePlayer.Screen and the serialized Video Player is empty), "
+                    : "(there is one), ") +
+                "or the decoder has not produced a first frame yet - which on this machine means " +
+                "the clip was imported without transcoding to VP8 and can take about a minute.", this);
         }
 
         void TickRecalibrateHold()
