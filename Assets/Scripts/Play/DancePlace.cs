@@ -66,6 +66,13 @@ namespace RHCommunityHack.Play
         [Tooltip("World-fixed panel root, enabled only while the player is standing here.")]
         [SerializeField] GameObject panel;
 
+        [Tooltip("Holder for this era's scenery - the Hitsville building, the Motown 25 " +
+                 "television, the city diorama. Empty in the prefab; each instance parents its " +
+                 "own props under it, which is why they are added GameObjects rather than a " +
+                 "component override. Switched with the dancers, on the same radius, because " +
+                 "these props run to six figures of triangles each and cannot all be resident.")]
+        [SerializeField] GameObject props;
+
         [Tooltip("The readout PlayModeUI writes into while this stage is occupied.")]
         [SerializeField] Text statusText;
 
@@ -140,6 +147,7 @@ namespace RHCommunityHack.Play
                 dancers.gameObject.SetActive(false);
                 dancersVisible = false;
             }
+            if (props != null) props.SetActive(false);
 
             // Start vacated so a scene saved with panels visible does not open with six lit
             // stages and no player on any of them.
@@ -171,7 +179,17 @@ namespace RHCommunityHack.Play
         // driver; giving six DancePlaces an Update each would spread that decision out.
         public void UpdateDancerProximity(Vector3 headPosition)
         {
-            if (dancers == null) return;
+            if (dancers == null)
+            {
+                // A stage can have props and no dancers. Fall back to driving the props alone so
+                // they are not stranded on by a missing reference somewhere else.
+                if (props != null)
+                {
+                    bool near = SqrDistanceTo(headPosition) <= dancerRenderRadius * dancerRenderRadius;
+                    if (props.activeSelf != near) props.SetActive(near);
+                }
+                return;
+            }
 
             float sqr = SqrDistanceTo(headPosition);
             float on = dancerRenderRadius * dancerRenderRadius;
@@ -185,6 +203,10 @@ namespace RHCommunityHack.Play
                 // Activate BEFORE handing over the take: the director rebuilds its graph in
                 // OnEnable, and building one on a disabled object achieves nothing.
                 dancers.gameObject.SetActive(want);
+
+                // The era props ride the same radius. They are static scenery with no state to
+                // rebuild, so they can simply follow.
+                if (props != null && props.activeSelf != want) props.SetActive(want);
             }
 
             // Re-asserted every frame rather than only on the transition. SetRecording returns

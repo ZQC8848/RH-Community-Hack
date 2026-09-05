@@ -52,6 +52,37 @@ MonoBehaviour:
   - {fileID: 4931272815762628047}
   - {fileID: 7445606742493997105}
   loop: 1
+--- !u!1 &2641382963882856524
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5314975740979101691}
+  m_Layer: 0
+  m_Name: Props
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5314975740979101691
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2641382963882856524}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7387178466526819557}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &4804013941347873515
 GameObject:
   m_ObjectHideFlags: 0
@@ -552,6 +583,7 @@ Transform:
   - {fileID: 3642558850567948824}
   - {fileID: 8649705092207577030}
   - {fileID: 7956397154274577134}
+  - {fileID: 5314975740979101691}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &5463338090233436140
@@ -573,6 +605,7 @@ MonoBehaviour:
   domeRenderer: {fileID: 8546377132798392201}
   dancers: {fileID: 317341729304721691}
   panel: {fileID: 8961230726448805767}
+  props: {fileID: 2641382963882856524}
   statusText: {fileID: 8634179951594273331}
   fitScreenToVideo: 1
   dancerRenderRadius: 20

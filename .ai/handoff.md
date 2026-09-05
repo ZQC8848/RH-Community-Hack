@@ -327,6 +327,60 @@ Decisions: [decisions/beats-from-recorded-motion.md](decisions/beats-from-record
 - Verified by switching four times in play mode: no leftover beats, particles or line points at
   any transition. **Not tried in a headset.**
 
+## The prologue (2026-09-05)
+
+The piece now opens before the timeline exists, as the script does: a black space, a narrator, and
+objects appearing around you as she names them - AR glasses, immersive cameras, a 5G tower, then
+the soft technologies - before "the objects slide into the distance and the ground timeline counts
+back to 1964".
+
+`PrologueDirector` on Play Controller walks a list of `PrologueCue`s and then hands over. The
+prologue is NOT a stage: it happens at its own anchor 49m off the line, far enough that
+DancePlaceManager claims no stage behind the narration, with the line drawn to zero length.
+
+> **THE NARRATION SLOT.** Every cue has an `AudioClip voice` field, all null today. The one method
+> that has to change when recordings arrive is `PrologueDirector.CueComplete`, and it already
+> handles both: with a clip the cue lasts the clip plus `holdAfter`, without one it lasts
+> `seconds`. So a half-recorded prologue works, and dropping clips in one at a time needs no code.
+> The AudioSource is wired (`Play Controller/Narration`, 2D).
+
+Hand-over is `TimelineDirector.Begin()`, which sets `index = -1` and enters Grow. That makes the
+**existing loop** do the opening with no special-case path: the line grows from nothing to the
+first stage - the script's "the timeline stretches out from our feet" - then Settle, then Travel
+carries the player onto it. `LengthAtStop(-1)` returning 0 is what makes that work.
+`TimelineDirector.autoStart` must be OFF, or both directors drive the player at once.
+
+> ⚠️ **The subtitle panel follows the head LAZILY, and that is the design.** Text welded to the
+> head is a reliable way to make someone ill - it never settles, so the eyes never rest. The panel
+> holds still until your gaze leaves it by more than 18 degrees, then slides smoothly. During the
+> prologue you are meant to be turning to look at objects appearing around you.
+>
+> And, again: it is a world-space canvas, not Screen Space - Overlay, which renders nothing in a
+> headset.
+
+`PropReveal` springs each prop up by scale rather than fading it - a fade needs every material on
+the object to be transparent and these FBXs carry up to 25 each. More importantly it keeps the
+object **switched off until its cue**, which is what stops several million triangles of props
+costing anything for the rest of the piece.
+
+## Era props on the stages (2026-09-05)
+
+The stage prefab gained an empty `Props` mount wired to `DancePlace.props`; instances parent their
+own scenery under it, so they are added GameObjects and `take` remains the only component
+override. `Props` rides the same 20m radius as the dancers - these models are six figures of
+triangles each.
+
+`hitsville` -> 1964, `CRTV` + `minicity` -> 1984, `tech-totem` -> 2016. The other eleven models
+belong to the prologue.
+
+> ⚠️ **A world-space pivot offset cannot be added straight into `localPosition`.** Both the
+> prologue root and every stage are rotated, so the first version put the 5G tower on top of the
+> player. Go through the parent: `parent.InverseTransformVector(wantedWorld - bounds.center)`.
+
+> ⚠️ **Do not assume a model's longest axis is Y.** `tech-totem`'s mesh extent is
+> `0.003 x 0.003 x 0.010` - it lies down. Normalising by height stretched it to 12.5m long.
+> Normalise by the largest dimension unless you have checked.
+
 ## The timeline advances by itself (2026-09-01)
 
 `TimelineDirector` on Play Controller walks the player along the line without them steering, which

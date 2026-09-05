@@ -97,6 +97,11 @@ namespace RHCommunityHack.Environment
         // knowing anything about folds. Index is into the ORDERED stops array.
         public float LengthAtStop(int stopIndex)
         {
+            // Negative means "before the first stop" - the prologue hand-over grows the line
+            // from nothing, and asking for stop -1 should give the start of the path, not the
+            // end of it.
+            if (stopIndex < 0) return 0f;
+
             int seen = -1;
             for (int i = 0; i < path.Count; i++)
             {

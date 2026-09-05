@@ -30,7 +30,9 @@ namespace RHCommunityHack.Play
     [DisallowMultipleComponent]
     public class TimelineDirector : MonoBehaviour
     {
-        enum Phase { Dwell, Dissolve, Grow, Settle, Travel, Finished }
+        // Idle is the state before Begin() is called - the prologue owns the piece then, and
+        // this component must not touch the player or the line until handed control.
+        enum Phase { Idle, Dwell, Dissolve, Grow, Settle, Travel, Finished }
 
         [Header("Wiring")]
         [Tooltip("The XR rig to move. Position is matched by the CAMERA, not by this transform - " +
@@ -70,13 +72,25 @@ namespace RHCommunityHack.Play
         [Tooltip("Fade to black, then back. Each half takes this long. Ignored with no fade.")]
         [SerializeField, Min(0f)] float fadeSeconds = 0.35f;
 
+        [Header("Start")]
+        [Tooltip("Start walking the timeline as soon as the scene runs. Turn this OFF when a " +
+                 "PrologueDirector owns the opening - it calls Begin() when the narration is " +
+                 "done. Left on with a prologue present, both would drive the player at once.")]
+        [SerializeField] bool autoStart = true;
+
         [Header("Travel")]
         [Tooltip("Turn the player to face the way the stage faces on arrival. The stage's facing " +
                  "is what decides where the screen and the guide orbs are, so landing backwards " +
                  "means landing with the show behind you.")]
         [SerializeField] bool matchFacing = true;
 
-        public bool IsRunning => phase != Phase.Finished;
+        // Idle counts as not running: before Begin() this component is waiting on the prologue
+        // and is driving nothing. Reporting true there would make "is the timeline running" mean
+        // "does the timeline exist", which is not a question anyone is asking.
+        public bool IsRunning => phase != Phase.Finished && phase != Phase.Idle;
+
+        // Waiting for the prologue to hand over.
+        public bool IsWaitingToBegin => phase == Phase.Idle;
 
         readonly List<DancePlace> route = new List<DancePlace>();
         int index;
@@ -102,6 +116,15 @@ namespace RHCommunityHack.Play
                 return;
             }
 
+            if (!autoStart)
+            {
+                // The prologue owns the opening. No line at all until it hands over - the script
+                // has the timeline appear only once the IFEL objects have slid away.
+                if (timeline != null) timeline.GrowTo(0f);
+                phase = Phase.Idle;
+                return;
+            }
+
             // The line starts drawn only as far as the stage the player is standing on. Doing
             // this in Start rather than Awake is safe: every Awake and OnEnable has already run,
             // and nothing has rendered yet.
@@ -109,6 +132,20 @@ namespace RHCommunityHack.Play
 
             MovePlayerTo(route[0], instant: true);
             Enter(Phase.Dwell);
+        }
+
+        // Take over from the prologue. Starting at index -1 rather than 0 is deliberate and does
+        // the whole job through the existing loop: Grow runs from zero length out to the first
+        // stage - the script's "the timeline stretches out from our feet" - then Settle, then
+        // Travel carries the player onto it. No special-case opening path to keep in step with
+        // the normal one.
+        public void Begin()
+        {
+            if (phase != Phase.Idle) return;
+            if (route.Count == 0) { phase = Phase.Finished; return; }
+
+            index = -1;
+            Enter(Phase.Grow);
         }
 
         // The stops on the line ARE the running order. Reading them here rather than keeping a
@@ -133,7 +170,8 @@ namespace RHCommunityHack.Play
 
             if (next == Phase.Grow && timeline != null)
             {
-                growFrom = timeline.LengthAtStop(index);
+                // index -1 is the hand-over from the prologue: grow from nothing.
+                growFrom = index < 0 ? 0f : timeline.LengthAtStop(index);
                 growTo = timeline.LengthAtStop(index + 1);
 
                 // The next stage's decoder needs a second or two to produce a first picture.
@@ -145,7 +183,7 @@ namespace RHCommunityHack.Play
 
         void Update()
         {
-            if (phase == Phase.Finished) return;
+            if (phase == Phase.Finished || phase == Phase.Idle) return;
             elapsed += Time.deltaTime;
 
             switch (phase)
@@ -157,7 +195,7 @@ namespace RHCommunityHack.Play
                 case Phase.Dissolve:
                 {
                     float t = Mathf.Clamp01(elapsed / dissolveSeconds);
-                    route[index].SetDissolve(t);
+                    if (index >= 0) route[index].SetDissolve(t);
                     if (t >= 1f) Enter(index + 1 < route.Count ? Phase.Grow : Phase.Finished);
                     break;
                 }
