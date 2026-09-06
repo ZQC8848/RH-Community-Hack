@@ -338,11 +338,29 @@ back to 1964".
 prologue is NOT a stage: it happens at its own anchor 49m off the line, far enough that
 DancePlaceManager claims no stage behind the narration, with the line drawn to zero length.
 
-> **THE NARRATION SLOT.** Every cue has an `AudioClip voice` field, all null today. The one method
-> that has to change when recordings arrive is `PrologueDirector.CueComplete`, and it already
-> handles both: with a clip the cue lasts the clip plus `holdAfter`, without one it lasts
-> `seconds`. So a half-recorded prologue works, and dropping clips in one at a time needs no code.
-> The AudioSource is wired (`Play Controller/Narration`, 2D).
+> **THE NARRATION IS RECORDED (2026-09-05).** Every cue's `voice` clip is now assigned, generated
+> ONCE from its subtitle by ElevenLabs through the editor menu
+> `RH Community Hack/Narration/Generate Missing Voice Clips` (`Assets/Scripts/Editor/NarrationBaker.cs`).
+> Clips live in `Assets/Audio/Narration/NN-label.mp3` with a `.txt` beside each holding the text it
+> was recorded from. The tool never spends twice: a cue with a clip is left alone, a file already
+> on disk is assigned without a request, and only a cue with neither is sent. To re-record a line,
+> delete its `.mp3` and run the menu again; if you edit a subtitle under an existing clip the tool
+> warns that the two no longer match. `PrologueDirector.CueComplete` waits for the clip and then
+> `holdAfter` measured from the END of the clip; a cue with no clip still falls back to `seconds`.
+>
+> **The API key is not in the repo and must not be.** `NarrationBaker` reads `ELEVENLABS_API_KEY`
+> or `.ai/secrets/elevenlabs.key` (gitignored). The key this was recorded with is restricted to
+> text-to-speech only (no `voices_read`, no `user_read`), so the voice list cannot be queried with
+> it - the voice is a const (`XrExE9yKIg1WjnnlVkGX`, "Matilda"). The script's narrator is an old
+> Black woman; none of the default library voices is that, and swapping in a closer one is a
+> const change plus deleting the seven files.
+>
+> **Subtitles are pure English, verbatim from the script PDF** (`Docs/Wage Love IFeel (2).pdf`,
+> pages 1-2). The second narrator block is split across three cues so the glasses, the cameras and
+> the tower appear as each is named; each fragment is sent with `previous_text`/`next_text` so the
+> voice does not land a full stop on "Augmented Reality glasses,". The third block is split at
+> "future" so the dismissal lands where the script puts it. Measured: cues advance on clip end,
+> hand-over at t≈55s, timeline running with all props dismissed, console clean.
 
 Hand-over is `TimelineDirector.Begin()`, which sets `index = -1` and enters Grow. That makes the
 **existing loop** do the opening with no special-case path: the line grows from nothing to the

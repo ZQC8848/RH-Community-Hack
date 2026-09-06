@@ -1381,28 +1381,21 @@ MonoBehaviour:
   voiceSource: {fileID: 1604430794}
   cues:
   - label: ifel intro
-    speaker: "\u53D9\u8FF0\u8005"
-    subtitle: "\u6C89\u6D78\u5F0F\u73B0\u573A\u6F14\u51FA\u9879\u76EE IFEL\uFF0C\u4E3A\u97F3\u4E50\u8282\u3001\u6F14\u5531\u4F1A\u3001\u76F4\u64AD\u8282\u76EE\u3001\u6D3E\u5BF9\n\u548C\u5176\u4ED6\u6F14\u51FA\u63D0\u4F9B\u4E86\u4E00\u79CD\u5168\u65B0\u7684\u3001\u9762\u5411\u5168\u7403\u5206\u4EAB\u7684\u65B9\u5F0F\u3002"
-    voice: {fileID: 0}
-    seconds: 7
-    holdAfter: 0.6
-    reveal: []
-    revealStagger: 0.35
-    dismissAll: 0
-  - label: technologies named
-    speaker: "\u53D9\u8FF0\u8005"
-    subtitle: "AR \u773C\u955C\u3001\u7A7A\u95F4\u97F3\u9891\u3001\u6C89\u6D78\u5F0F\u6444\u5F71\u673A\u3001\u4F4E\u5EF6\u8FDF\u4E32\u6D41\u8FD9\u4E9B\u65B0\u6280\u672F\uFF0C\n\u8BA9\u6211\u4EEC\u5F97\u4EE5\u7528\u524D\u6240\u672A\u6709\u7684\u65B9\u5F0F\u628A\u4EBA\u4EEC\u805A\u5230\u4E00\u8D77\u3002"
-    voice: {fileID: 0}
-    seconds: 6
+    speaker: NARRATOR
+    subtitle: The Immersive Festival Live project, IFEL, presents a new way for festivals,
+      concerts, live TV shows, parties, and other productions to be shared around
+      the world.
+    voice: {fileID: 8300000, guid: df87196a19b72a34bb1afe1efce8a8fe, type: 3}
+    seconds: 9
     holdAfter: 0.6
     reveal: []
     revealStagger: 0.35
     dismissAll: 0
   - label: ar glasses
-    speaker: "\u53D9\u8FF0\u8005"
-    subtitle: "\u4E8C\u5341\u591A\u526F AR \u773C\u955C\u8FDE\u540C\u54C1\u724C\u540D\u6D6E\u73B0\u5728\u56DB\u5468\uFF0C\n\u7AD6\u7ACB\u7740\u968F\u97F3\u4E50\u8D77\u821E\u3002"
-    voice: {fileID: 0}
-    seconds: 7
+    speaker: NARRATOR
+    subtitle: New technology like Augmented Reality glasses,
+    voice: {fileID: 8300000, guid: 9e33780dd5d5531438b972c038fad9c0, type: 3}
+    seconds: 4
     holdAfter: 0.6
     reveal:
     - {fileID: 1686847273}
@@ -1411,11 +1404,10 @@ MonoBehaviour:
     revealStagger: 0.35
     dismissAll: 0
   - label: immersive cameras
-    speaker: "\u53D9\u8FF0\u8005"
-    subtitle: "\u5B9E\u62CD\u7528\u8FC7\u7684\u771F\u4EBA\u5C3A\u5BF8\u6444\u5F71\u673A\u2014\u2014\nBlack
-      Magic\u3001\u4F73\u80FD\u3001Insta360\u2014\u2014\u4E5F\u5728\u8DF3\u821E\u3002"
-    voice: {fileID: 0}
-    seconds: 8
+    speaker: NARRATOR
+    subtitle: spatial audio, immersive cameras,
+    voice: {fileID: 8300000, guid: 17c25cac2108cb44b84d88c04945d806, type: 3}
+    seconds: 4
     holdAfter: 0.6
     reveal:
     - {fileID: 1790786895}
@@ -1425,10 +1417,10 @@ MonoBehaviour:
     revealStagger: 0.35
     dismissAll: 0
   - label: low latency
-    speaker: "\u53D9\u8FF0\u8005"
-    subtitle: "\u8BF4\u5230\u4F4E\u5EF6\u8FDF\u4E32\u6D41\uFF0C\u5149\u7EA4\u7535\u7F06\u548C
-      5G \u4FE1\u53F7\u5854\n\u51FA\u73B0\u5E76\u5F00\u59CB\u8DF3\u821E\u3002"
-    voice: {fileID: 0}
+    speaker: NARRATOR
+    subtitle: and low latency streaming give us the ability to bring people together
+      like never before.
+    voice: {fileID: 8300000, guid: 3a908d4241d339b47b3a918b87f8f0f1, type: 3}
     seconds: 6
     holdAfter: 0.6
     reveal:
@@ -1436,11 +1428,12 @@ MonoBehaviour:
     revealStagger: 0.35
     dismissAll: 0
   - label: soft technologies
-    speaker: "\u53D9\u8FF0\u8005"
-    subtitle: "\u4F46\u8FD9\u4E2A\u9879\u76EE\u4E0D\u53EA\u5173\u4E4E\u6280\u672F\u7684\u6C47\u805A\u3002\u5B83\u7684\u5185\u6838\uFF0C\u59CB\u7EC8\u662F\u628A\u4EBA\u805A\u5728\u4E00\u8D77\u3002\n\u662F\u5173\u4E8E\u5171\u521B\u3002\u662F\u5173\u4E8E\u7597\u6108\u3002\u662F\u5173\u4E8E
-      Wage Love\u3002"
-    voice: {fileID: 0}
-    seconds: 9
+    speaker: NARRATOR
+    subtitle: But this project isn't just about the technology coming together. At
+      its core, it was always about bringing people together. It was about co-creation.
+      It was about healing. It was about Waging Love.
+    voice: {fileID: 8300000, guid: c6673c1777f47a543bb70c062fc4804a, type: 3}
+    seconds: 12
     holdAfter: 0.6
     reveal:
     - {fileID: 1100281814}
@@ -1448,11 +1441,22 @@ MonoBehaviour:
     - {fileID: 1076570259}
     revealStagger: 0.35
     dismissAll: 0
+  - label: where it started
+    speaker: NARRATOR
+    subtitle: And to understand how these technologies come together, you have to
+      know where the project started.
+    voice: {fileID: 8300000, guid: 1e78e61291c10ad4e9fa22559b687d5a, type: 3}
+    seconds: 6
+    holdAfter: 0.6
+    reveal: []
+    revealStagger: 0.35
+    dismissAll: 0
   - label: count back
-    speaker: "\u53D9\u8FF0\u8005"
-    subtitle: "\u800C\u8981\u7406\u89E3\u8FD9\u4E9B\u6280\u672F\u5982\u4F55\u6C47\u805A\uFF0C\u4F60\u5F97\u77E5\u9053\u8FD9\u4E2A\u9879\u76EE\u4ECE\u54EA\u91CC\u5F00\u59CB\u3002\n\u5B83\u59CB\u4E8E\u4E00\u4E2A\u5173\u4E8E\u672A\u6765\u7684\u613F\u666F\u3002\u90A3\u4E2A\u613F\u666F\u957F\u6210\u4E86\u4E00\u4E2A\u68A6\u3002"
-    voice: {fileID: 0}
-    seconds: 8
+    speaker: NARRATOR
+    subtitle: And it started with a vision of the future. That vision grew into a
+      dream.
+    voice: {fileID: 8300000, guid: d673a9410feae6445a4e6a181dbf994c, type: 3}
+    seconds: 6
     holdAfter: 0.6
     reveal: []
     revealStagger: 0.35
@@ -2559,35 +2563,35 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: a251efa9f2a571c469973ac06bacd0f0, type: 3}
       propertyPath: m_LocalScale.x
-      value: 11.273908
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: a251efa9f2a571c469973ac06bacd0f0, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 11.273908
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: a251efa9f2a571c469973ac06bacd0f0, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 11.273908
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: a251efa9f2a571c469973ac06bacd0f0, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0.0351851
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: a251efa9f2a571c469973ac06bacd0f0, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 3.9943311
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: a251efa9f2a571c469973ac06bacd0f0, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -6.0825076
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: a251efa9f2a571c469973ac06bacd0f0, type: 3}
-      propertyPath: m_LocalRotation.w
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: a251efa9f2a571c469973ac06bacd0f0, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: a251efa9f2a571c469973ac06bacd0f0, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: a251efa9f2a571c469973ac06bacd0f0, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.04
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: a251efa9f2a571c469973ac06bacd0f0, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.45
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: a251efa9f2a571c469973ac06bacd0f0, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -4.25
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: a251efa9f2a571c469973ac06bacd0f0, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: a251efa9f2a571c469973ac06bacd0f0, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0
+      value: -0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: a251efa9f2a571c469973ac06bacd0f0, type: 3}
       propertyPath: m_LocalRotation.y
@@ -2599,7 +2603,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: a251efa9f2a571c469973ac06bacd0f0, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
+      value: -90
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: a251efa9f2a571c469973ac06bacd0f0, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
@@ -2608,6 +2612,10 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: a251efa9f2a571c469973ac06bacd0f0, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: a251efa9f2a571c469973ac06bacd0f0, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: a251efa9f2a571c469973ac06bacd0f0, type: 3}
       propertyPath: m_Name
@@ -3845,27 +3853,27 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 68ba47ad6a27ef34e8c321824fc5e4d6, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.9848078
+      value: 0.6963643
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 68ba47ad6a27ef34e8c321824fc5e4d6, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0
+      value: -0.6963643
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 68ba47ad6a27ef34e8c321824fc5e4d6, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.1736482
+      value: 0.12278779
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 68ba47ad6a27ef34e8c321824fc5e4d6, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
+      value: 0.12278779
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 68ba47ad6a27ef34e8c321824fc5e4d6, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
+      value: -90
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 68ba47ad6a27ef34e8c321824fc5e4d6, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
+      value: 20
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 68ba47ad6a27ef34e8c321824fc5e4d6, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z

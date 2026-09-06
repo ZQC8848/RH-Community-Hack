@@ -76,6 +76,7 @@ namespace RHCommunityHack.Play
         int index = -1;
         float elapsed;
         float cueLength;
+        float voiceEndedAt = -1f;   // cue-relative time the clip stopped; -1 while it still plays
         bool staged;
 
         void Start()
@@ -149,6 +150,7 @@ namespace RHCommunityHack.Play
         {
             index = next;
             elapsed = 0f;
+            voiceEndedAt = -1f;
             staged = false;
             phase = Phase.Cue;
 
@@ -194,7 +196,14 @@ namespace RHCommunityHack.Play
         bool CueComplete(PrologueCue cue)
         {
             if (cue.voice != null && voiceSource != null)
-                return !voiceSource.isPlaying && elapsed >= cue.holdAfter;
+            {
+                // holdAfter counts from the END of the line, not from the start of the cue -
+                // otherwise a clip longer than holdAfter swallows the pause entirely and the
+                // next line starts the frame this one stops.
+                if (voiceSource.isPlaying) return false;
+                if (voiceEndedAt < 0f) voiceEndedAt = elapsed;
+                return elapsed - voiceEndedAt >= cue.holdAfter;
+            }
 
             return elapsed >= cueLength;
         }

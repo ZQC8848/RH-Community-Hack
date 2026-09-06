@@ -687,18 +687,30 @@ beat 模式必须开：那边没有任何东西会重启视频，不循环的话
 | `SubtitleDisplay` | 世界空间字幕面板，**懒跟随**头部 |
 | `PropReveal` | 单个道具的浮现 / 停驻 / 退场 |
 
-### 15.2 语音接口——预留的那个位置
+### 15.2 语音：已录制，且只录一次（v9）
 
-**每个 cue 上有一个 `AudioClip voice` 字段，现在全是空的。**
+**每个 cue 的 `voice` 都已挂上 clip。** 由编辑器菜单 `RH Community Hack/Narration/Generate Missing Voice Clips`（`Assets/Scripts/Editor/NarrationBaker.cs`）用 ElevenLabs 从字幕文本生成，存在 `Assets/Audio/Narration/NN-label.mp3`，旁边的 `.txt` 记着它是从哪句话录的。
 
-推进条件集中在 `PrologueDirector.CueComplete` **这一个方法**里：
+这个工具**不会花第二次钱**：
 
 ```
-挂了 clip  →  这一拍持续到音频播完 + holdAfter
+cue 已挂 clip        →  不动（只在字幕改过时警告"音频和字幕不一致"）
+磁盘上已有 mp3       →  直接挂上，不请求
+两者都没有           →  请求一次，写文件，挂上
+```
+
+要重录某一句：删掉它的 `.mp3`，再跑一次菜单。`Assign Existing Clips Only` 是无网络版本，给只有 clip 没有 key 的克隆用。
+
+推进条件仍集中在 `PrologueDirector.CueComplete` 一个方法里：
+
+```
+挂了 clip  →  这一拍持续到音频播完，再加 holdAfter（从音频**结束**起算）
 没挂 clip  →  这一拍持续 seconds 秒
 ```
 
-所以**录音到位时只改这一处，状态机其余部分不用知道区别**；而且录一段挂一段也能跑——挂了的等音频，没挂的走计时器。`AudioSource`（`Play Controller/Narration`，2D、非空间化）已经接好。
+**API key 不在仓库里，也不能进仓库。** `NarrationBaker` 读环境变量 `ELEVENLABS_API_KEY`，否则读 `.ai/secrets/elevenlabs.key`（已 gitignore）。这把 key 是受限 key（只有 text-to-speech，没有 `voices_read`），所以音色是常量 `XrExE9yKIg1WjnnlVkGX`（"Matilda"，温和的美式女声）。剧本里的叙述者是一位年长的黑人女性，默认音色库里没有贴切的，换音色 = 改常量 + 删掉七个文件。
+
+`AudioSource`（`Play Controller/Narration`，2D、非空间化）不变。
 
 ### 15.3 交接：`index = -1` 是有意的
 
@@ -727,19 +739,21 @@ Dwell   正常循环开始
 
 `PropReveal` 在浮现之前把整个 GameObject **关着**——这比动画本身重要：序章道具加起来是几百万三角形，没轮到的不该有任何开销。停驻时有轻微上下浮动和缓慢自转，因为剧本反复强调这些东西**在跳舞**（「竖立着随音乐起舞」「也在跳舞」「出现并开始跳舞」）。
 
-### 15.6 序章的七拍
+### 15.6 序章的七拍（字幕为纯英文，逐字取自剧本 PDF 第 1–2 页）
 
-| # | 拍 | 浮现 |
-|---|---|---|
-| 0 | IFEL 是什么 | — |
-| 1 | 点出四项技术 | — |
-| 2 | AR 眼镜 | `specs` `metaquest` `androidxr` |
-| 3 | 沉浸式摄影机 | `blackmagic` `cannon` `insta360` `gopro` |
-| 4 | 低延迟串流 | `5gtower` |
-| 5 | 软技术：团结 / 共创 / 疗愈 | `unity` `cocreation` `healing` |
-| 6 | 「倒数回 1964」 | 全部退场 |
+| # | cue | 字幕（英文原文） | 浮现 | 音频 |
+|---|---|---|---|---|
+| 0 | ifel intro | The Immersive Festival Live project, IFEL, presents a new way for festivals, concerts, live TV shows, parties, and other productions to be shared around the world. | — | 11.3s |
+| 1 | ar glasses | New technology like Augmented Reality glasses, | `specs` `metaquest` `androidxr` | 3.1s |
+| 2 | immersive cameras | spatial audio, immersive cameras, | `blackmagic` `cannon` `insta360` `gopro` | 2.6s |
+| 3 | low latency | and low latency streaming give us the ability to bring people together like never before. | `5gtower` | 5.6s |
+| 4 | soft technologies | But this project isn't just about the technology coming together. At its core, it was always about bringing people together. It was about co-creation. It was about healing. It was about Waging Love. | `unity` `cocreation` `healing` | 13.5s |
+| 5 | where it started | And to understand how these technologies come together, you have to know where the project started. | — | 5.4s |
+| 6 | count back | And it started with a vision of the future. That vision grew into a dream. | 全部退场 | 4.5s |
 
-计时器版全长约 58 秒，加交接约 66 秒。实测到达 Stage 3 在 t=89s。
+剧本的第二段旁白被拆成 1–3 三拍，是为了让眼镜、摄影机、信号塔**在被点名的那一刻**出现；每一拍生成时都带着前后句作为 `previous_text` / `next_text`，所以 "Augmented Reality glasses," 后面不会被念成句号。第三段在 "future" 处拆开，让退场落在剧本写的位置。
+
+实测：各拍按音频长度推进，t≈55s 交接，timeline 开始运行、道具全部退场，控制台无错误。
 
 ## 16. 时代道具（v8）
 
