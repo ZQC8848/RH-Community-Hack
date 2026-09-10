@@ -381,6 +381,84 @@ the object to be transparent and these FBXs carry up to 25 each. More importantl
 object **switched off until its cue**, which is what stops several million triangles of props
 costing anything for the rest of the piece.
 
+## Prologue props replaced with the rigged set; dancer is V4 (2026-09-10)
+
+Eight Tripo models from the desktop "New folder" replaced `androidxr`, `blackmagic`, `cannon`,
+`gopro`, `insta360`, `metaquest`, `specs`, and added `orion` (Meta Orion glasses, in the AR glasses
+group and cue 1). They are the "Rigged" exports: each is a SkinnedMeshRenderer under an Armature,
+~95k triangles, standing on legs - the script's "they are vertical and dance to the music" is
+literal now. Each FBX carries a 20-frame `preset:biped:freaky.001` take; it is imported as a looping clip
+named `dance`, and each prop's scene instance has an Animator with
+`Assets/3DModel/Animation/<name>.controller` (one state, that clip, root motion off). They dance
+for real. The turntable spin is OFF on these eight and replaced by `PropReveal.faceViewer`: yaw
+toward `Camera.main`, world-up locked, 90 deg/s follow, instant on the first frame of the reveal so
+nothing arrives side-on. A dancer performs TO someone; a spinning one dances at the wall half the
+time. Measured in play mode: facing error 0 deg on all eight while the player stands at the
+prologue anchor, and again after the travel to Stage 1 (they keep turning to follow). Model
+front is +Z, so `facingOffsetDegrees` is 0 - the close-ups show eyes/lenses toward the headset.
+The unrigged props (5G tower, the soft-technology models) keep the old bob and spin.
+
+**Materials are explicit, not the importer's.** Tripo ships base colour, normal, metallic and
+roughness as separate JPEGs beside the FBX, and Unity's importer only wires the first two. Each
+model has `Assets/3DModel/Materials/<name>.mat` (URP Lit) with base, normal, and a generated
+`<name>_metallicsmooth.png` (R = metallic, A = 1 - roughness, sRGB off) in
+`Assets/3DModel/Textures/<name>/`; the FBX material is remapped to it in the importer. The models
+look dark in the prologue because they ARE metallic and the prologue is a black room - turn the
+Metallic slider down on those eight materials if that reads wrong in the headset.
+
+Sizes were re-fitted by largest dimension (glasses 0.8-1.2m, cameras 0.7-1.3m) at the old world
+centres, yaw kept. Prologue prop total is now 1.07M triangles (was 3.3M for androidxr alone), all
+skinned - still the heaviest moment of the piece on Quest 3, and a decimation pass is the
+follow-up if the prologue drops frames.
+
+**The dancer is `SuperFusionAncestorV4.fbx`** (same guid as the old `SuperFusionAncestor (1).fbx`,
+so DanceStage.prefab kept its references; the untracked V3 duplicates and the V3 textures are
+gone). Three things the V4 export needed: the stored HumanDescription was V3's and failed with
+"Transform 'Armature' not found", so it was cleared and the mixamo rig auto-mapped (avatar is
+human again); the file carries a Blender Camera and Light, so `importCameras`/`importLights` are
+off; and it carries an UNSKINNED duplicate of the body (`tripo_node_1caaac3b`) next to the skinned
+one, which DanceStage.prefab now keeps inactive on all three dancers - re-check that if the model
+is ever re-exported. Textures were embedded; extracted to `MotionCaptures/Textures/V4/` and wired
+into `MotionCaptures/Materials/SuperFusionAncestorV4.mat`. V4's UV layout differs from V3's, so
+the V3 metallic/roughness maps were not reused.
+
+## Quest 3 build (2026-09-10)
+
+There is a one-click build: `RH Community Hack/Build/Quest 3 APK (Development)`
+(`Assets/Scripts/Editor/QuestBuild.cs`) writes `Builds/RHCommunityHack-quest3-dev.apk`. First build:
+4.5 min, 259 MB on disk, no errors. Install with `adb install -r Builds/RHCommunityHack-quest3-dev.apk`
+and watch `adb logcat -s Unity`. **Not yet run on a headset** - none was attached when it was built.
+
+> **The video path is not a Windows dependency, but it was designed around Windows.** Everything
+> in `DanceVideoScreen` - never `Stop()`, `Prepare()` then `Play()` to force a first picture, the
+> 3s `WarmVideo` ahead of arrival, the 8s watchdog - exists because Windows Media Foundation takes
+> 18-55s to deliver a first frame. On Quest 3 the MediaCodec H.264 hardware decoder delivers in
+> well under a second, so all of that is unnecessary but harmless. The one thing that matters for
+> the headset is the IMPORTER: the project-wide `Transcode -> VP8` is the Windows workaround, and
+> every mp4 now carries an **Android override with Transcode OFF**, so the APK ships the original
+> H.264 and the headset hardware-decodes it. Do not remove that override to "make the platforms
+> consistent" - they are inconsistent on purpose.
+>
+> The only genuine platform risk left: a parked stage keeps its decoder instance (no `Stop()`),
+> and Quest 3 has a small number of concurrent hardware decoders. With three stages carrying
+> video it fits; if all six get video, park with `Stop()` on Android and keep the no-Stop rule on
+> Windows.
+
+What changed for the build, and why:
+
+- Build Settings had only `SampleScene` - `PlayScene` was not in the package at all. Now it is
+  the one scene.
+- Min SDK 25 -> 32 (Meta Quest OpenXR needs >= 29, the store wants 32). Package id was still the
+  URP template's; now `com.zqc8848.rhcommunityhack`. Texture compression Generic -> ASTC.
+  Optimized Frame Pacing on.
+- `Mobile_RPAsset`: HDR off, MSAA 4x, main-light shadows off. The piece is a black space with
+  unlit domes; HDR and shadows were pure cost on a tiled GPU.
+- `androidxr` (3.3M triangles) is out of the prologue's cue 1 reveal list. The object is still in
+  the scene, inactive. Decimate it to ~50k and put it back.
+- Already correct and left alone: ARM64 + IL2CPP, Vulkan first, Linear, OpenXR loader on Android
+  with Meta Quest Support (Quest 3 ticked) + Touch / Touch Plus profiles, Single Pass Instanced,
+  all custom shaders carry the instancing macros.
+
 ## Era props on the stages (2026-09-05)
 
 The stage prefab gained an empty `Props` mount wired to `DancePlace.props`; instances parent their

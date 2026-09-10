@@ -737,6 +737,8 @@ Dwell   正常循环开始
 
 淡入要求物件上每一个材质都是透明的，而这些 FBX 一个带到 25 个材质。缩放对任何材质都成立。
 
+**带骨骼的 8 个道具（眼镜 4、摄影机 4，v10）真的在跳舞**：每个 fbx 自带一段 20 帧的 `preset:biped:freaky` 动作，导入为循环 clip `dance`，场景实例上挂 Animator（`Assets/3DModel/Animation/<name>.controller`，单状态、无 root motion）。这 8 个**不再自转**，改为 `PropReveal.faceViewer`：只绕 Y 轴转向 `Camera.main`，90°/s 平滑跟随，浮现第一帧瞬时对正——表演者是对着人跳的，自转会有一半时间背对观众。模型正面是 +Z，`facingOffsetDegrees` = 0。未带骨骼的道具（5G 塔、软技术三件）保留原来的浮动 + 自转。
+
 `PropReveal` 在浮现之前把整个 GameObject **关着**——这比动画本身重要：序章道具加起来是几百万三角形，没轮到的不该有任何开销。停驻时有轻微上下浮动和缓慢自转，因为剧本反复强调这些东西**在跳舞**（「竖立着随音乐起舞」「也在跳舞」「出现并开始跳舞」）。
 
 ### 15.6 序章的七拍（字幕为纯英文，逐字取自剧本 PDF 第 1–2 页）
@@ -744,7 +746,7 @@ Dwell   正常循环开始
 | # | cue | 字幕（英文原文） | 浮现 | 音频 |
 |---|---|---|---|---|
 | 0 | ifel intro | The Immersive Festival Live project, IFEL, presents a new way for festivals, concerts, live TV shows, parties, and other productions to be shared around the world. | — | 11.3s |
-| 1 | ar glasses | New technology like Augmented Reality glasses, | `specs` `metaquest` `androidxr` | 3.1s |
+| 1 | ar glasses | New technology like Augmented Reality glasses, | `specs` `metaquest` `androidxr` `orion` | 3.1s |
 | 2 | immersive cameras | spatial audio, immersive cameras, | `blackmagic` `cannon` `insta360` `gopro` | 2.6s |
 | 3 | low latency | and low latency streaming give us the ability to bring people together like never before. | `5gtower` | 5.6s |
 | 4 | soft technologies | But this project isn't just about the technology coming together. At its core, it was always about bringing people together. It was about co-creation. It was about healing. It was about Waging Love. | `unity` `cocreation` `healing` | 13.5s |

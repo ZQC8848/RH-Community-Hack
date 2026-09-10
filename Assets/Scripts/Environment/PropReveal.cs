@@ -38,8 +38,23 @@ namespace RHCommunityHack.Environment
         [Tooltip("Bob cycles per second.")]
         [SerializeField, Min(0f)] float bobSpeed = 0.6f;
 
-        [Tooltip("Degrees per second of slow turn, so a prop shows itself from every side.")]
+        [Tooltip("Degrees per second of slow turn, so a prop shows itself from every side. Zero " +
+                 "for the rigged props, which face the viewer instead - see below.")]
         [SerializeField] float spinDegreesPerSecond = 12f;
+
+        [Header("Facing")]
+        [Tooltip("Keep the prop's front turned toward the headset (yaw only - it never tilts). " +
+                 "For the rigged props that dance: a dancer performs TO someone, and a turntable " +
+                 "spin would have it dancing at the wall half the time. Mutually exclusive with " +
+                 "the spin in practice; if both are set, facing wins.")]
+        [SerializeField] bool faceViewer = false;
+
+        [Tooltip("How fast it turns to follow, in degrees per second. Slow enough to read as a " +
+                 "performer shifting their weight, not a billboard snapping.")]
+        [SerializeField, Min(1f)] float turnDegreesPerSecond = 90f;
+
+        [Tooltip("Added to the facing yaw, for a model whose authored front is not +Z.")]
+        [SerializeField] float facingOffsetDegrees = 0f;
 
         enum State { Hidden, Appearing, Idle, Vanishing }
 
@@ -49,6 +64,7 @@ namespace RHCommunityHack.Environment
         float t;
         float delay;
         float phase;
+        Transform viewer;
 
         public bool IsVisible => state == State.Appearing || state == State.Idle;
 
@@ -104,6 +120,8 @@ namespace RHCommunityHack.Environment
                 case State.Appearing:
                     t += Time.deltaTime / appearSeconds;
                     transform.localScale = baseScale * Spring(Mathf.Clamp01(t));
+                    // Face from the first frame, or it would arrive side-on and swing round.
+                    if (faceViewer) FaceViewer(instant: t <= Time.deltaTime / appearSeconds);
                     if (t >= 1f) { transform.localScale = baseScale; state = State.Idle; t = 0f; }
                     break;
 
@@ -126,8 +144,30 @@ namespace RHCommunityHack.Environment
                 float y = Mathf.Sin((Time.time * bobSpeed * Mathf.PI * 2f) + phase) * bobHeight;
                 transform.localPosition = basePosition + Vector3.up * y;
             }
-            if (!Mathf.Approximately(spinDegreesPerSecond, 0f))
+            if (faceViewer) FaceViewer(instant: false);
+            else if (!Mathf.Approximately(spinDegreesPerSecond, 0f))
                 transform.Rotate(Vector3.up, spinDegreesPerSecond * Time.deltaTime, Space.Self);
+        }
+
+        // Yaw toward the headset. World up stays up: the props stand on the ground and a full
+        // look-at would pitch them over when the viewer is taller or shorter than they are.
+        void FaceViewer(bool instant)
+        {
+            if (viewer == null)
+            {
+                var cam = Camera.main;
+                if (cam == null) return;
+                viewer = cam.transform;
+            }
+
+            Vector3 to = viewer.position - transform.position;
+            to.y = 0f;
+            if (to.sqrMagnitude < 1e-4f) return;
+
+            var want = Quaternion.LookRotation(to.normalized, Vector3.up) * Quaternion.Euler(0f, facingOffsetDegrees, 0f);
+            transform.rotation = instant
+                ? want
+                : Quaternion.RotateTowards(transform.rotation, want, turnDegreesPerSecond * Time.deltaTime);
         }
 
         // Ease out with a small overshoot - the difference between something arriving and
