@@ -1,5 +1,5 @@
 // "Neon energy pulse" approach ring - a glowing annulus drawn on a billboard quad.
-// See Docs/Ring-Sphere 交互判定与美术规格.md §4-5 and .ai/decisions/ring-art-direction.md
+// See Docs/Ring-Sphere Judgment and Art Spec.md §4-5 and .ai/decisions/ring-art-direction.md
 //
 // Drawn in the quad's UV space: dist 0 = quad centre, dist 1 = quad edge. BeatTarget scales
 // the quad so _RingRadius of its half-width equals the current logical ring radius, and reads

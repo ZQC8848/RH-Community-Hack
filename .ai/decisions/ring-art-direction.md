@@ -1,6 +1,6 @@
 # Ring renders as a billboard, and the art direction is "neon energy pulse" (not toon-candy or particle-native)
 
-**2026-08-20 ・ status: standing ・ scope: covers only the ring/sphere's rendering approach and shader style, not the judgment logic or gameplay variables (see [../Docs/Ring-Sphere 交互判定与美术规格.md](../Docs/Ring-Sphere%20交互判定与美术规格.md))**
+**2026-08-20 ・ status: standing ・ scope: covers only the ring/sphere's rendering approach and shader style, not the judgment logic or gameplay variables (see [../../Docs/Ring-Sphere Judgment and Art Spec.md](../../Docs/Ring-Sphere%20Judgment%20and%20Art%20Spec.md))**
 
 ## What forced the choice
 

@@ -1,5 +1,5 @@
 // "Neon energy pulse" beat sphere - Fresnel rim glow + emissive core.
-// See Docs/Ring-Sphere 交互判定与美术规格.md §5 and .ai/decisions/ring-art-direction.md
+// See Docs/Ring-Sphere Judgment and Art Spec.md §5 and .ai/decisions/ring-art-direction.md
 //
 // Transparent on purpose: BeatTarget's Miss-Touch vanish animation fades _BaseColor.a to 0
 // (via MaterialPropertyBlock), which only reads as a fade if this shader honours that alpha -

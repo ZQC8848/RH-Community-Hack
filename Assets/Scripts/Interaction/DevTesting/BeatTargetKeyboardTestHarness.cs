@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 namespace RHCommunityHack.Interaction.DevTesting
 {
     // Editor/dev-only input adapter for iterating on judgment timing without a headset.
-    // Deliberately NOT part of the portable BeatTarget module (see Docs/Ring-Sphere 交互判定与美术规格.md §8):
+    // Deliberately NOT part of the portable BeatTarget module (see Docs/Ring-Sphere Judgment and Art Spec.md §8):
     // it drives BeatTarget through the exact same public TryTouch API a real VR controller
     // trigger collider would use, so swapping to real VR input later means adding a new adapter,
     // not touching this class or BeatTarget itself. Don't carry this folder into a build/port.

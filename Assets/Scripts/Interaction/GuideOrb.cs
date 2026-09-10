@@ -9,7 +9,7 @@ namespace RHCommunityHack.Interaction
     // This is deliberately NOT a BeatTarget. That type is organised around a single moment
     // (lead time, judgment windows, resolve, expire); this one exists continuously and has no
     // moment, no judgment and no Miss. See .ai/decisions/guide-orb-not-a-beat-target.md and
-    // Docs/Guide Orb 跟随引导球规格.md
+    // Docs/Guide Orb Spec.md
     //
     // HIERARCHY CONTRACT: this object's world scale must stay 1. orbRadius is a world-space
     // radius, and both the visual size and the activation distance are derived from it - a

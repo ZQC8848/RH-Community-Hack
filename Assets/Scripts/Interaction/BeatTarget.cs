@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace RHCommunityHack.Interaction
 {
-    // Portable core of the ring/sphere hit mechanic (see Docs/Ring-Sphere 交互判定与美术规格.md).
+    // Portable core of the ring/sphere hit mechanic (see Docs/Ring-Sphere Judgment and Art Spec.md).
     // Public surface is deliberately narrow: Initialize + TryTouch + OnResolved. Any input source
     // (keyboard test harness today, a VR controller trigger collider later) drives this through
     // TryTouch and nothing else - the judgment logic never branches on where the touch came from.

@@ -1,7 +1,7 @@
 // Guide orb - Fresnel rim glow (shared with BeatSphere) plus concentric ripples that spread
 // from the point where a hand entered the orb.
 //
-// See Docs/Guide Orb 跟随引导球规格.md §5 and .ai/decisions/guide-orb-contact-ripple.md
+// See Docs/Guide Orb Spec.md §5 and .ai/decisions/guide-orb-contact-ripple.md
 //
 // The ripple is a world-space distance field from _ContactPoint, deliberately NOT a UV
 // pattern: a hex grid or any other texture-space pattern pinches at the sphere's poles

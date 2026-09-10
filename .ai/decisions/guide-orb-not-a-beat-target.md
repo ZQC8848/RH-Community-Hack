@@ -6,7 +6,7 @@
 
 A new interaction: two orbs travel along recorded controller motion, trailing particles, and
 light up when the player's controller reaches into them. Spec:
-[../../Docs/Guide Orb 跟随引导球规格.md](../../Docs/Guide%20Orb%20跟随引导球规格.md).
+[../../Docs/Guide Orb Spec.md](../../Docs/Guide%20Orb%20Spec.md).
 
 The obvious move was to reuse `BeatTarget`. It already has a sphere, a neon shader, hit
 particles, hand-specific rules, and a working contact path - on the face of it this is the

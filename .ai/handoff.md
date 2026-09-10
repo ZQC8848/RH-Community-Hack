@@ -6,7 +6,7 @@
 
 The project is the prototype layer of a narrative VR piece. Its script -
 `Wage Love IFeel.pdf` - is translated and mapped to the implementation in
-[../Docs/Wage Love 剧本翻译与实现对照.md](../Docs/Wage%20Love%20%E5%89%A7%E6%9C%AC%E7%BF%BB%E8%AF%91%E4%B8%8E%E5%AE%9E%E7%8E%B0%E5%AF%B9%E7%85%A7.md).
+[../Docs/Wage Love Script to Implementation Map.md](../Docs/Wage%20Love%20Script%20to%20Implementation%20Map.md).
 
 **The asset names are not placeholders.** `Dance_1984Dancinginstreets`,
 `Dance_2016compnoholdingback`, `Dance_2017Wiacwagelove`,
@@ -24,7 +24,7 @@ see [decisions/one-clip-many-dancers.md](decisions/one-clip-many-dancers.md).
 ## Dance capture (2026-08-26) — new subsystem
 
 Records a real dancer's controller motion so takes can later be turned into beat charts.
-Spec: [../Docs/Dance Capture 录制与回放规格.md](../Docs/Dance%20Capture%20录制与回放规格.md).
+Spec: [../Docs/Dance Capture Recording and Playback Spec.md](../Docs/Dance%20Capture%20Recording%20and%20Playback%20Spec.md).
 Reference-frame decision: [decisions/dance-capture-frozen-reference-frame.md](decisions/dance-capture-frozen-reference-frame.md).
 
 - Code in `Assets/Scripts/DanceCapture/`: `DanceReferenceFrame`, `DanceSample`,
@@ -115,7 +115,7 @@ Reference-frame decision: [decisions/dance-capture-frozen-reference-frame.md](de
 ## Where things stand
 
 - No interaction gameplay code exists yet. The judgment mechanic and its art direction
-  are now fully spec'd in [../Docs/Ring-Sphere 交互判定与美术规格.md](../Docs/Ring-Sphere%20交互判定与美术规格.md)
+  are now fully spec'd in [../Docs/Ring-Sphere Judgment and Art Spec.md](../Docs/Ring-Sphere%20Judgment%20and%20Art%20Spec.md)
   and [decisions/ring-art-direction.md](decisions/ring-art-direction.md) — ring is a
   billboard, art direction is "neon energy pulse" (Fresnel glow + emission), and there
   are now **three** judgment outcomes below Perfect/Good: `Miss-Touch` (touched but
@@ -129,7 +129,7 @@ Reference-frame decision: [decisions/dance-capture-frozen-reference-frame.md](de
   verified end-to-end (Play mode: server handshake succeeded, avatar spawned) — then
   fully reverted. The scene is back to the stock `Main Camera` / `Directional Light` /
   `Global Volume`.
-- Design doc copied into the repo at `Docs/Idea：RH Community Hack — VR节奏音游交互范式（Ring-Sphere + 真人录制映射）.md`,
+- Design doc copied into the repo at `Docs/Idea - VR Rhythm Game Interaction Paradigm.md`,
   kept in sync with the Obsidian source (source of truth is Obsidian; re-copy after
   editing there).
 
@@ -144,7 +144,7 @@ Core judgment logic, neon shaders, and hit-burst VFX are all built and validated
    burst counts), no code changes needed.
 2. **Sound + haptics** — still entirely unimplemented; `BeatTargetConfig` has the AudioClip
    slots wired through `PlaySfx` but every clip is null, and haptics don't exist at all.
-   Design doc discussion flagged these as contributing more to VR "打击感" than particles do.
+   Design doc discussion flagged these as contributing more to VR "sense of impact" than particles do.
 3. **Real VR controller input** — a new, small `OnTriggerEnter`-based adapter calling the
    same `BeatTarget.TryTouch` API the keyboard harness uses. **Do not modify `BeatTarget`
    itself for this** — if it turns out you have to, that invalidates an open assumption in
@@ -218,7 +218,7 @@ Core judgment logic, neon shaders, and hit-burst VFX are all built and validated
     *and* its own config asset (VFX prefab refs live in the config). Tolerable at two
     flavours; if they multiply, consider moving the VFX refs onto the prefab so one asset
     defines a flavour end-to-end.
-  - Two flavours map naturally onto the not-yet-implemented "允许触发的手柄（左/右）"
+  - Two flavours map naturally onto the not-yet-implemented "which controllers may trigger (left / right)"
     variable in spec §6 (Beat Saber-style per-hand targets), but nothing implements that
     yet — right now they are purely cosmetic alternatives, and the keyboard harness is
     wired to Cyan only.
@@ -283,7 +283,7 @@ Core judgment logic, neon shaders, and hit-burst VFX are all built and validated
 **Beat mode** (hit spheres charted from a take) and **Guide mode** (keep hands inside orbs that
 travel the take). **X** switches; both modes read the same take.
 
-Spec: [../Docs/PlayScene 双模式与节奏谱生成规格.md](../Docs/PlayScene%20%E5%8F%8C%E6%A8%A1%E5%BC%8F%E4%B8%8E%E8%8A%82%E5%A5%8F%E8%B0%B1%E7%94%9F%E6%88%90%E8%A7%84%E6%A0%BC.md).
+Spec: [../Docs/PlayScene Modes and Beat Chart Spec.md](../Docs/PlayScene%20Modes%20and%20Beat%20Chart%20Spec.md).
 Decisions: [decisions/beats-from-recorded-motion.md](decisions/beats-from-recorded-motion.md),
 [decisions/play-scene-two-modes.md](decisions/play-scene-two-modes.md),
 [decisions/one-clip-many-dancers.md](decisions/one-clip-many-dancers.md).
@@ -664,7 +664,7 @@ Each stage now owns:
   Verified: three distinct instance IDs, and the never-visited stage had allocated none.
   The capture scene assigns its RT explicitly and is unaffected.
 
-Spec: Docs/Dance Place 三处舞台与就位判定规格.md, sections 2.1, 6.0 and 8.5.
+Spec: Docs/Dance Place Stages and Standing Spec.md, sections 2.1, 6.0 and 8.5.
 
 ## Guide orbs (2026-08-29) - built, NOT yet tried in a headset
 
@@ -672,7 +672,7 @@ Two orbs travel a recorded take, trailing particles; reaching a controller into 
 its surface ripple, its volume grow and its particles brighten. Purpose is **guidance and
 teaching**, not judgment - there is no Miss.
 
-Spec: [../Docs/Guide Orb 跟随引导球规格.md](../Docs/Guide%20Orb%20跟随引导球规格.md).
+Spec: [../Docs/Guide Orb Spec.md](../Docs/Guide%20Orb%20Spec.md).
 Decisions: [decisions/guide-orb-not-a-beat-target.md](decisions/guide-orb-not-a-beat-target.md),
 [decisions/guide-orb-contact-ripple.md](decisions/guide-orb-contact-ripple.md).
 
