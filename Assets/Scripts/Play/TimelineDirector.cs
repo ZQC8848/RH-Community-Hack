@@ -52,10 +52,11 @@ namespace RHCommunityHack.Play
         [SerializeField] PlayModeController controller;
 
         [Header("Timing")]
-        [Tooltip("How long the player stays on a stage before it starts to come apart. THIS IS A " +
-                 "PLACEHOLDER for 'until the immersive video has finished' - see StageComplete " +
-                 "below, which is the one place that has to change when the video arrives.")]
-        [SerializeField, Min(0f)] float dwellSeconds = 3f;
+        [Tooltip("How long the player stays on a stage.")]
+        [SerializeField, Min(0f)] float dwellSeconds = 30f;
+
+        [Tooltip("Delay after arrival before dome starts dissolving.")]
+        [SerializeField, Min(0f)] float dissolveStartDelay = 1f;
 
         [Tooltip("How long the dome takes to dissolve away.")]
         [SerializeField, Min(0.1f)] float dissolveSeconds = 1.5f;
@@ -76,7 +77,7 @@ namespace RHCommunityHack.Play
         [Tooltip("Start walking the timeline as soon as the scene runs. Turn this OFF when a " +
                  "PrologueDirector owns the opening - it calls Begin() when the narration is " +
                  "done. Left on with a prologue present, both would drive the player at once.")]
-        [SerializeField] bool autoStart = true;
+        [SerializeField] bool autoStart = false;
 
         [Header("Travel")]
         [Tooltip("Turn the player to face the way the stage faces on arrival. The stage's facing " +
@@ -189,14 +190,18 @@ namespace RHCommunityHack.Play
             switch (phase)
             {
                 case Phase.Dwell:
+                    if (elapsed >= dissolveStartDelay && index >= 0)
+                    {
+                        float t = Mathf.Clamp01((elapsed - dissolveStartDelay) / dissolveSeconds);
+                        route[index].SetDissolve(t);
+                    }
                     if (StageComplete()) Enter(Phase.Dissolve);
                     break;
 
                 case Phase.Dissolve:
                 {
-                    float t = Mathf.Clamp01(elapsed / dissolveSeconds);
-                    if (index >= 0) route[index].SetDissolve(t);
-                    if (t >= 1f) Enter(index + 1 < route.Count ? Phase.Grow : Phase.Finished);
+                    if (index >= 0) route[index].SetDissolve(1f);
+                    Enter(index + 1 < route.Count ? Phase.Grow : Phase.Finished);
                     break;
                 }
 
@@ -270,6 +275,7 @@ namespace RHCommunityHack.Play
             // With one, Travel keeps running until the screen is clear again.
             if (fade == null) Enter(Phase.Dwell);
         }
+
 
         void MovePlayerTo(DancePlace place, bool instant)
         {

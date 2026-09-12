@@ -31,7 +31,7 @@ Material:
     m_Floats:
     - _Smoothness: 0.06
     - _SpillRemoval: 0.7
-    - _Threshold: 0.12
+    - _Threshold: 0.159
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
     - _KeyColor: {r: 0, g: 0.8, b: 0.09999997, a: 1}

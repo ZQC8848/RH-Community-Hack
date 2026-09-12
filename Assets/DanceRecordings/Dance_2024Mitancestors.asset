@@ -14,12 +14,24 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RHCommunityHack.DanceCapture.DanceRecording
   label: MIT Media Lab, DNA, Lucy, volumetric ancestors joining the dance (script
     p.249-253). NO CONTENT YET.
-  capturedDuration: 0
-  averageSampleRate: 0
-  samples: []
+  capturedDuration: 240
+  averageSampleRate: 46.84832
+  samples:
+  - time: 0
+    headPosition: {x: 0, y: 0, z: 0}
+    leftPosition: {x: 0, y: 0, z: 0}
+    leftRotation: {x: 0, y: 0, z: 0, w: 0}
+    rightPosition: {x: 0, y: 0, z: 0}
+    rightRotation: {x: 0, y: 0, z: 0, w: 0}
+  - time: 0
+    headPosition: {x: 0, y: 0, z: 0}
+    leftPosition: {x: 0, y: 0, z: 0}
+    leftRotation: {x: 0, y: 0, z: 0, w: 0}
+    rightPosition: {x: 0, y: 0, z: 0}
+    rightRotation: {x: 0, y: 0, z: 0, w: 0}
   music: {fileID: 0}
-  video: {fileID: 0}
-  characterAnimation: {fileID: 0}
+  video: {fileID: 32900000, guid: b26c624edd651c64d8ea8d60ba63c9f6, type: 3}
+  characterAnimation: {fileID: -4671056281497532287, guid: ca24152a060f39046916d4f43f066989, type: 3}
   poster: {fileID: 0}
   chromaKey: 1
   keyColor: {r: 0.05, g: 0.75, b: 0.12, a: 1}

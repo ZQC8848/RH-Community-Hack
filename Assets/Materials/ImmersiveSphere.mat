@@ -58,7 +58,7 @@ Material:
     - _DstBlend: 0
     - _DstBlendAlpha: 0
     - _EdgeWidth: 0.08
-    - _NoiseScale: 8
+    - _NoiseScale: 10
     - _QueueOffset: 0
     - _SampleGI: 0
     - _SrcBlend: 1
@@ -68,7 +68,7 @@ Material:
     - _XRMotionVectorsPass: 1
     - _ZWrite: 1
     m_Colors:
-    - _BaseColor: {r: 0.14999998, g: 0.34999996, b: 0.54999995, a: 1}
+    - _BaseColor: {r: 0.24670693, g: 0.46297616, b: 0.6792453, a: 0.38431373}
     - _Color: {r: 0.14999998, g: 0.34999996, b: 0.54999995, a: 1}
     - _EdgeColor: {r: 1, g: 0.55, b: 0.2, a: 1}
   m_BuildTextureStacks: []
