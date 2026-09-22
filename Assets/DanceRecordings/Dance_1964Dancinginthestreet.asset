@@ -13705,7 +13705,7 @@ MonoBehaviour:
     rightRotation: {x: -0.33652526, y: -0.027742792, z: -0.034007866, w: -0.9406512}
   music: {fileID: 8300000, guid: de47102ccd03ba04ab01e3aa4051389c, type: 3}
   video: {fileID: 0}
-  characterAnimation: {fileID: 440032088431914173, guid: fd76b4be28e2de549bee4984a7847ee6, type: 3}
+  characterAnimation: {fileID: -4671056281497532287, guid: ca24152a060f39046916d4f43f066989, type: 3}
   poster: {fileID: 0}
   chromaKey: 1
   keyColor: {r: 0.05, g: 0.75, b: 0.12, a: 1}
